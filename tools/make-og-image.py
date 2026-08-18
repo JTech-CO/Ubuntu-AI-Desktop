@@ -234,7 +234,7 @@ def build() -> Image.Image:
     line(ty + 120 * SS, prompt + [("neofetch", WHITE), ("   # reads the real CPU, GPU and RAM", TERM_DIM)])
     line(
         ty + 150 * SS,
-        [("Ubuntu 24.04.1 LTS  ·  186 commands  ·  10 apps  ·  real bash pipeline", TERM_YELLOW)],
+        [("Ubuntu 24.04.1 LTS  ·  200 commands  ·  10 apps  ·  real bash pipeline", TERM_YELLOW)],
     )
 
     draw.text((96 * SS, 578 * SS), "jtech-co.github.io/Ubuntu-AI-Desktop", font=f_url, fill=(255, 226, 214))

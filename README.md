@@ -5,7 +5,7 @@
 [![Live demo](https://img.shields.io/badge/demo-live-E95420?style=flat-square)](https://jtech-co.github.io/Ubuntu-AI-Desktop/)
 ![No build step](https://img.shields.io/badge/build-none-772953?style=flat-square)
 ![Vanilla ES modules](https://img.shields.io/badge/js-vanilla%20ES%20modules-2C001E?style=flat-square)
-![Commands](https://img.shields.io/badge/shell-186%20commands-26A269?style=flat-square)
+![Commands](https://img.shields.io/badge/shell-200%20commands-26A269?style=flat-square)
 
 [![Ubuntu AI Desktop](assets/og-image.png)](https://jtech-co.github.io/Ubuntu-AI-Desktop/)
 
@@ -253,7 +253,22 @@ add-apt-repository apt-add-repository do-release-upgrade`
 vim vi gedit gnome-text-editor code nautilus gnome-files firefox cowsay cowthink
 figlet banner fortune reboot poweroff halt shutdown`
 
-That is 143 external commands plus 24 builtins. Run `help` for the live list, or
+**Emulator-only** `reset github` — these two do not exist on Ubuntu, or behave
+differently there, and their man pages say so.
+
+`reset` is a factory reset for the desktop: it discards the filesystem,
+wallpaper, accent, theme, dock settings, session, browser history, shell history
+and trash, then reloads. Your API key survives unless you pass `--all`; `-y`
+skips the confirmation. (Real `reset(1)` reinitialises the *terminal* and leaves
+your files alone — use `clear` or `Ctrl+L` for that.)
+
+`github` is a scripted demo: the screen pulses, Firefox opens by itself, types
+`github.com` a character at a time and loads a locally drawn repository page —
+GitHub sends `X-Frame-Options`, so the real site cannot be embedded, and the page
+says so. Enter then takes the browser tab to the live site; Escape cancels.
+
+That is 176 external commands plus 24 builtins — 200 in all, or 212 names counting
+aliases. Run `help` for the live list, or
 `man <command>` for a full page.
 
 `apt install` really does write a binary into `/usr/bin`, so `which` finds it
