@@ -33,6 +33,7 @@ import { dialog } from '../../core/dialog.js';
 import {
   HOME_URL,
   NEWTAB_URL,
+  BLANK_URL,
   HISTORY_URL,
   BOOKMARKS_URL,
   SEARCH_PREFIX,
@@ -79,6 +80,15 @@ import { t, openExternal, resolveLiveInput, parseYouTube, renderLivePage } from 
 import { renderLiveSearchPage } from './live-search.js';
 import { renderYouTubePage } from './live-youtube.js';
 import { createOmnibox } from './omnibox.js';
+import {
+  GITHUB_URL,
+  GITHUB_TITLE,
+  DISPLAY_URL as GITHUB_DISPLAY_URL,
+  TYPED_TEXT,
+  renderGitHubPage,
+  renderGitHubSkeleton,
+  showContinuePrompt,
+} from './pages-github.js';
 import { createMenu } from './menu.js';
 
 /** @type {Map<string, object>} instanceId -> session */
@@ -566,7 +576,15 @@ function createSession(root, ctx) {
     if (!tab) return;
 
     if (document.activeElement !== urlInput) {
-      urlInput.value = tab.url === NEWTAB_URL || tab.url === HOME_URL ? '' : tab.url;
+      // Local pages that stand in for a real site show the address they are
+      // impersonating; `github:repo` is an internal scheme the user never typed.
+      const shown =
+        tab.url === NEWTAB_URL || tab.url === HOME_URL
+          ? ''
+          : tab.url === GITHUB_URL
+            ? GITHUB_DISPLAY_URL
+            : tab.url;
+      urlInput.value = shown;
     }
     backBtn.disabled = tab.index <= 0;
     forwardBtn.disabled = tab.index >= tab.stack.length - 1;
@@ -710,6 +728,27 @@ function createSession(root, ctx) {
     tab.view.scrollTop = 0;
     setLoading(tab, false);
     const url = tab.url;
+
+    // The locally drawn GitHub page. Rendered with a brief skeleton first so a
+    // "load" is visible, which is what makes the driven sequence read as a real
+    // page fetch rather than an instant swap.
+    if (url === GITHUB_URL) {
+      tab.view.appendChild(renderGitHubSkeleton());
+      setTabTitle(tab, 'github.com');
+      setLoading(tab, true);
+      updateChrome();
+      const nav = tab.nav;
+      const timer = setTimeout(() => {
+        if (tab.nav !== nav || !tab.view.isConnected) return;
+        clear(tab.view);
+        tab.view.appendChild(renderGitHubPage(browser));
+        setTabTitle(tab, GITHUB_TITLE);
+        setLoading(tab, false);
+        updateChrome();
+      }, 620);
+      demoTimers.push(timer);
+      return;
+    }
 
     if (isLocalUrl(url)) {
       const page = renderLocalPage(url, browser);
@@ -927,6 +966,88 @@ function createSession(root, ctx) {
     cleanups.push(() => observer.disconnect());
   }
 
+  /* ======================================================= github demo == */
+
+  /**
+   * The scripted "someone is driving this machine" sequence.
+   *
+   * Every timer is registered in `demoTimers` and cleared by `stopDemo`, which
+   * also runs from the app's own teardown. A half-finished sequence must not
+   * keep typing into an address bar whose window has closed.
+   */
+  const demoTimers = [];
+  let demoRunning = false;
+  let demoPromptTeardown = null;
+
+  function stopDemo() {
+    demoRunning = false;
+    while (demoTimers.length) clearTimeout(demoTimers.pop());
+    if (demoPromptTeardown) {
+      demoPromptTeardown();
+      demoPromptTeardown = null;
+    }
+  }
+  cleanups.push(stopDemo);
+
+  /** setTimeout that participates in stopDemo. */
+  const demoWait = (ms) =>
+    new Promise((resolve) => {
+      demoTimers.push(setTimeout(resolve, ms));
+    });
+
+  async function runGitHubDemo() {
+    if (demoRunning) return;
+    demoRunning = true;
+
+    const tab = state.active;
+    if (!tab) return;
+
+    // A person interrupting outranks the script: any real typing, click or
+    // Enter in the address bar aborts it.
+    const abortOnUser = () => stopDemo();
+    urlInput.addEventListener('keydown', abortOnUser, { once: true });
+    cleanups.push(() => urlInput.removeEventListener('keydown', abortOnUser));
+
+    const reduced =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    await demoWait(reduced ? 60 : 450);
+    if (!demoRunning) return;
+
+    urlInput.focus({ preventScroll: true });
+    urlbar.classList.add('is-focused', 'fx-urlbar--driven');
+    urlInput.value = '';
+
+    if (reduced) {
+      urlInput.value = TYPED_TEXT;
+    } else {
+      for (const char of TYPED_TEXT) {
+        await demoWait(70 + Math.random() * 26);
+        if (!demoRunning) return;
+        urlInput.value += char;
+        // Keep the caret pinned to the end, as real typing would.
+        urlInput.setSelectionRange(urlInput.value.length, urlInput.value.length);
+      }
+      await demoWait(360);
+    }
+    if (!demoRunning) return;
+
+    urlInput.blur();
+    urlbar.classList.remove('is-focused', 'fx-urlbar--driven');
+    omnibox.close();
+
+    navigate(GITHUB_URL, { tab });
+    if (!demoRunning) return;
+
+    // The page render is synchronous; wait for the fake load, then prompt.
+    await demoWait(reduced ? 120 : 900);
+    if (!demoRunning || tab !== state.active || tab.url !== GITHUB_URL) return;
+
+    demoPromptTeardown = showContinuePrompt(tab.view);
+    demoRunning = false;
+  }
+
   /* ============================================================ startup == */
 
   renderBookmarkBar();
@@ -934,7 +1055,13 @@ function createSession(root, ctx) {
 
   const startUrls = [];
   const args = ctx.args || {};
-  if (typeof args.url === 'string' && args.url.trim() !== '') {
+  const driveScript = args.drive === 'github-demo' ? 'github-demo' : '';
+
+  if (driveScript) {
+    // The demo drives an empty tab: it types the address itself, so starting
+    // anywhere real would make the typing look like a second navigation.
+    startUrls.push(BLANK_URL);
+  } else if (typeof args.url === 'string' && args.url.trim() !== '') {
     startUrls.push(args.url.trim());
   } else if (typeof args.search === 'string' && args.search.trim() !== '') {
     startUrls.push(searchUrl(args.search.trim()));
@@ -950,6 +1077,8 @@ function createSession(root, ctx) {
   });
   resize();
   updateChrome();
+
+  if (driveScript === 'github-demo') runGitHubDemo();
 
   return {
     focus() {

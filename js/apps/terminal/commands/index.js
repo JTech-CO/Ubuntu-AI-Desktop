@@ -33,6 +33,7 @@ const MODULES = [
   './ai.js',
   './misc.js',
   './extras.js',
+  './desktop.js',
 ];
 
 /** @type {string[]} modules that failed to load, for diagnostics */

@@ -20,6 +20,7 @@ import { notify } from './core/notify.js';
 import { dialog } from './core/dialog.js';
 import { h } from './core/dom.js';
 import { gemini } from './services/gemini.js';
+import { factoryReset } from './core/factory-reset.js';
 
 import { wm } from './shell/window-manager.js';
 import { installTopBar } from './shell/top-bar.js';
@@ -284,12 +285,6 @@ step('restore session', () => {
 });
 
 /**
- * Set while a deliberate wipe is in progress, so the unload handler does not
- * write the state back out again.
- */
-let wiping = false;
-
-/**
  * Offer to trap the keyboard.
  *
  * This has to be a click target rather than something boot does by itself:
@@ -352,7 +347,7 @@ step('register session persistence', () => {
   bus.on('win:open', saveSession);
   bus.on('win:close', saveSession);
   window.addEventListener('beforeunload', () => {
-    if (wiping) return;
+    if (factoryReset.isWiping()) return;
 
     // If the `fs` key has vanished while the page was open, someone cleared
     // storage deliberately (the documented `localStorage.clear()` reset, or the
@@ -365,26 +360,14 @@ step('register session persistence', () => {
   });
 });
 
-/**
- * Wipe every trace of this desktop and start over: filesystem, settings, API
- * key, session and shell history.
- *
- * @param {{reload?: boolean}} [opts]
- * @returns {void}
- */
-function resetDesktop({ reload = true } = {}) {
-  wiping = true;
-  store.clear();
-  if (reload) window.location.reload();
-}
-
 /* ===================================================================== *
  * 8. debug handle + splash
  * ===================================================================== */
 
 window.UAD = {
   fs, wm, procs, env, bus, store, gemini, metrics, notify, settings, apps,
-  reset: resetDesktop,
+  reset: factoryReset.run,
+  factoryReset,
 };
 
 step('dismiss boot splash', () => {
