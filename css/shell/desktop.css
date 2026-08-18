@@ -1,0 +1,251 @@
+/* ===========================================================================
+   desktop.css — the root surface: wallpaper, desktop icons, layer stacking,
+   the boot splash and the brightness overlay.
+   Owns the elements declared statically in index.html.
+   =========================================================================== */
+
+#desktop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-desktop);
+  overflow: hidden;
+}
+
+#wallpaper {
+  position: absolute;
+  inset: 0;
+  background: var(--wallpaper);
+  background-size: cover;
+  background-position: center;
+  /* The overview blurs and pushes the wallpaper back. */
+  transition:
+    transform var(--dur-slow) var(--ease-out),
+    filter var(--dur-slow) var(--ease-out);
+  will-change: transform, filter;
+}
+
+body.overview-open #wallpaper {
+  transform: scale(1.06);
+  filter: blur(18px) brightness(0.72);
+}
+
+/* --- Desktop icons ---------------------------------------------------------
+   Laid out in a column-first grid under the top bar and beside the dock,
+   the way Nautilus arranges the desktop. */
+#desktop-icons {
+  position: absolute;
+  top: calc(var(--top-bar-height) + var(--sp-3));
+  left: calc(var(--dock-reserved-left) + var(--sp-3));
+  right: var(--sp-3);
+  bottom: calc(var(--dock-reserved-bottom) + var(--sp-3));
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(auto-fill, 92px);
+  grid-auto-columns: 96px;
+  gap: var(--sp-2);
+  align-content: start;
+  justify-content: start;
+  pointer-events: none;
+}
+
+.desktop-icon {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-1);
+  border-radius: var(--radius-lg);
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.desktop-icon:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.desktop-icon:active,
+.desktop-icon.is-selected {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.desktop-icon__glyph {
+  font-size: 40px;
+  line-height: 1.1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.desktop-icon__label {
+  font-size: var(--text-sm);
+  text-align: center;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* --- Layers ----------------------------------------------------------------
+   Each layer is a transparent, click-through container; the elements the
+   shell puts inside them re-enable pointer events for themselves. */
+#windows-container {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-window);
+  pointer-events: none;
+}
+
+#windows-container > * {
+  pointer-events: auto;
+}
+
+#panel-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-top-bar);
+  pointer-events: none;
+}
+
+#panel-layer > * {
+  pointer-events: auto;
+}
+
+#overlay-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overview);
+  pointer-events: none;
+}
+
+#overlay-layer > * {
+  pointer-events: auto;
+}
+
+#menu-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-menu);
+  pointer-events: none;
+}
+
+#menu-layer > * {
+  pointer-events: auto;
+}
+
+#notification-container {
+  position: fixed;
+  top: calc(var(--top-bar-height) + var(--sp-2));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-notification);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  pointer-events: none;
+}
+
+#notification-container > * {
+  pointer-events: auto;
+}
+
+#dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  pointer-events: none;
+}
+
+#dialog-layer > * {
+  pointer-events: auto;
+}
+
+/* --- Brightness ------------------------------------------------------------
+   A black scrim whose opacity the quick-settings slider drives. */
+#brightness-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-brightness);
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) linear;
+}
+
+/* --- Boot splash -----------------------------------------------------------
+   The GNOME/Plymouth boot screen: the wordmark over the Ubuntu aubergine,
+   with the five-dot progress animation. */
+#boot-splash {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-session);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-7);
+  background: #2c001e;
+  color: #fff;
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+
+#boot-splash.is-done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boot-splash__mark {
+  font-family: var(--font-ui);
+  font-size: 44px;
+  font-weight: var(--weight-normal);
+  letter-spacing: 0.02em;
+}
+
+.boot-splash__dots {
+  display: flex;
+  gap: 10px;
+}
+
+.boot-splash__dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ubuntu-orange);
+  opacity: 0.25;
+  animation: boot-dot 1.4s ease-in-out infinite;
+}
+
+.boot-splash__dots i:nth-child(2) { animation-delay: 0.16s; }
+.boot-splash__dots i:nth-child(3) { animation-delay: 0.32s; }
+.boot-splash__dots i:nth-child(4) { animation-delay: 0.48s; }
+.boot-splash__dots i:nth-child(5) { animation-delay: 0.64s; }
+
+@keyframes boot-dot {
+  0%,
+  70%,
+  100% {
+    opacity: 0.25;
+    transform: scale(1);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
+/* --- noscript -------------------------------------------------------------- */
+#noscript-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-6);
+  background: #2c001e;
+  color: #fff;
+  text-align: center;
+}

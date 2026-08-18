@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#2c001e" />
+    <meta
+      name="description"
+      content="An Ubuntu 24.04 LTS desktop emulator that runs entirely in your browser — a real bash shell with pipes and redirection, a shared virtual filesystem, and ten GNOME apps. No install, no server, no build step."
+    />
+    <title>Ubuntu AI Desktop</title>
+
+    <!-- Social preview. Open Graph requires absolute URLs, so these are pinned
+         to the GitHub Pages origin and will not resolve from a local server. -->
+    <link rel="canonical" href="https://jtech-co.github.io/Ubuntu-AI-Desktop/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Ubuntu AI Desktop" />
+    <meta property="og:title" content="Ubuntu AI Desktop" />
+    <meta
+      property="og:description"
+      content="브라우저에서 그대로 도는 Ubuntu 24.04 LTS 데스크톱. 진짜 bash 셸, 186개 명령어, 공유 가상 파일시스템, 앱 10개."
+    />
+    <meta property="og:url" content="https://jtech-co.github.io/Ubuntu-AI-Desktop/" />
+    <meta property="og:image" content="https://jtech-co.github.io/Ubuntu-AI-Desktop/assets/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Ubuntu AI Desktop — a terminal window showing a real bash pipeline running in the browser" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:locale:alternate" content="en_US" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Ubuntu AI Desktop" />
+    <meta
+      name="twitter:description"
+      content="브라우저에서 그대로 도는 Ubuntu 24.04 LTS 데스크톱. 진짜 bash 셸, 186개 명령어, 앱 10개."
+    />
+    <meta name="twitter:image" content="https://jtech-co.github.io/Ubuntu-AI-Desktop/assets/og-image.png" />
+
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/og-image.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&family=Ubuntu+Mono:wght@400;700&family=Fira+Code:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- base -->
+    <link rel="stylesheet" href="css/base/tokens.css" />
+    <link rel="stylesheet" href="css/base/reset.css" />
+    <link rel="stylesheet" href="css/base/typography.css" />
+    <!-- shell -->
+    <link rel="stylesheet" href="css/shell/desktop.css" />
+    <link rel="stylesheet" href="css/shell/window.css" />
+    <link rel="stylesheet" href="css/shell/top-bar.css" />
+    <link rel="stylesheet" href="css/shell/dock.css" />
+    <link rel="stylesheet" href="css/shell/system-menu.css" />
+    <link rel="stylesheet" href="css/shell/overview.css" />
+    <link rel="stylesheet" href="css/shell/context-menu.css" />
+    <link rel="stylesheet" href="css/shell/notifications.css" />
+    <link rel="stylesheet" href="css/shell/dialog.css" />
+    <link rel="stylesheet" href="css/shell/run-dialog.css" />
+    <link rel="stylesheet" href="css/shell/keyboard-capture.css" />
+    <!-- apps -->
+    <link rel="stylesheet" href="css/apps/terminal.css" />
+    <link rel="stylesheet" href="css/apps/files.css" />
+    <link rel="stylesheet" href="css/apps/editor.css" />
+    <link rel="stylesheet" href="css/apps/imageviewer.css" />
+    <link rel="stylesheet" href="css/apps/codeoss.css" />
+    <link rel="stylesheet" href="css/apps/firefox.css" />
+    <link rel="stylesheet" href="css/apps/monitor.css" />
+    <link rel="stylesheet" href="css/apps/settings.css" />
+    <link rel="stylesheet" href="css/apps/calculator.css" />
+  </head>
+
+  <body>
+    <div id="desktop">
+      <div id="wallpaper"></div>
+      <div id="desktop-icons"></div>
+    </div>
+
+    <div id="windows-container"></div>
+    <div id="panel-layer"></div>
+    <div id="overlay-layer"></div>
+    <div id="menu-layer"></div>
+    <div id="notification-container"></div>
+    <div id="dialog-layer"></div>
+    <div id="brightness-overlay"></div>
+
+    <div id="boot-splash">
+      <div class="boot-splash__mark">ubuntu</div>
+      <div class="boot-splash__dots"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+
+    <noscript>
+      <div id="noscript-notice">
+        <h1>JavaScript is required</h1>
+        <p>Ubuntu AI Desktop is a browser-based desktop emulator and cannot run without JavaScript.</p>
+      </div>
+    </noscript>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

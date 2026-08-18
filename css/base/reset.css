@@ -1,0 +1,202 @@
+/* ===========================================================================
+   reset.css — normalisation for a full-screen desktop shell
+   Loaded after tokens.css, before any shell or app stylesheet.
+   =========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* the desktop never scrolls; windows scroll internally */
+}
+
+body {
+  background: #000;
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+
+  /* A desktop shell should not select text when you drag across icons.
+     Anything that genuinely holds text opts back in via .selectable below. */
+  user-select: none;
+  -webkit-user-select: none;
+
+  /* Stop iOS/trackpad rubber-banding and double-tap zoom on the shell. */
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+/* --- Text selection opt-in ------------------------------------------------
+   Terminals, editors and form controls must behave like real text. */
+.selectable,
+input,
+textarea,
+[contenteditable='true'],
+.term-view,
+.ce-lines,
+.editor-view,
+.fx-page,
+pre,
+code {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* --- Media ---------------------------------------------------------------- */
+img,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+svg {
+  fill: none;
+  stroke: currentColor;
+  flex-shrink: 0;
+}
+
+/* --- Form controls -------------------------------------------------------- */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+}
+
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: inherit;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+textarea {
+  resize: none;
+}
+
+/* Kill the UA focus ring but keep a real one for keyboard users. */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* --- Typography defaults -------------------------------------------------- */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  margin: 0;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 0;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* --- Scrollbars ----------------------------------------------------------
+   Thin GNOME-style overlay scrollbars. Firefox gets the standard properties;
+   WebKit/Blink gets the pseudo-elements. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* --- Dragging ------------------------------------------------------------
+   While a window is being dragged or resized the whole document adopts the
+   pointer's cursor, otherwise the cursor flickers as it crosses child nodes. */
+body.is-dragging,
+body.is-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+body.is-resizing * {
+  user-select: none !important;
+}
+
+[hidden] {
+  display: none !important;
+}

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>Ubuntu AI Desktop</title>
+  <rect width="64" height="64" rx="12" fill="#2c001e"/>
+  <!-- Circle of Friends: three dots at 0/120/240 degrees, joined by an arc
+       that breaks at each dot. Geometry matches assets/og-image.png. -->
+  <g transform="translate(32 32)">
+    <g fill="none" stroke="#e95420" stroke-width="5.5">
+      <path d="M 20 0 A 20 20 0 0 1 -10 17.3"/>
+      <path d="M -10 17.3 A 20 20 0 0 1 -10 -17.3"/>
+      <path d="M -10 -17.3 A 20 20 0 0 1 20 0" transform="rotate(0)"/>
+    </g>
+    <g fill="#e95420">
+      <circle cx="20" cy="0" r="7"/>
+      <circle cx="-10" cy="17.3" r="7"/>
+      <circle cx="-10" cy="-17.3" r="7"/>
+    </g>
+  </g>
+</svg>

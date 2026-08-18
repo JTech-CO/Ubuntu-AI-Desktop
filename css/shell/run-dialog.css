@@ -1,0 +1,251 @@
+/* ------------------------------------------------------------------
+   css/shell/run-dialog.css — GNOME 46's Alt+F2 "Enter a Command"
+
+   One rounded entry floating a fifth of the way down the screen, on the
+   dark shell surface GNOME uses for every overlay regardless of the
+   light/dark preference. No window chrome, no title, no buttons — the
+   hint line under the entry is the only affordance, exactly as in the
+   real dialog.
+
+   The ghost suffix is a second copy of the text sitting under the
+   input: the typed part is transparent so only the completion shows
+   through, which keeps the caret and the completion perfectly aligned
+   without measuring text.
+
+   Owns:  .run-dialog-layer  .run-dialog and its BEM children
+   ------------------------------------------------------------------ */
+
+.run-dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog, 1500);
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+
+  /* GNOME opens the entry about a fifth of the way down, clear of the bar. */
+  padding-top: max(18vh, calc(var(--top-bar-height, 32px) + 48px));
+  padding-inline: var(--sp-4, 16px);
+
+  /* No scrim: GNOME dims nothing for the run dialog. */
+  background: transparent;
+}
+
+.run-dialog-layer[hidden] {
+  display: none;
+}
+
+/* --- the entry ---------------------------------------------------- */
+
+.run-dialog {
+  box-sizing: border-box;
+  width: min(520px, 100%);
+  max-height: calc(100vh - 20vh - 32px);
+  overflow: hidden auto;
+
+  padding: var(--sp-3, 12px);
+
+  background: var(--shell-popover-bg, #2c2c2c);
+  color: var(--shell-fg, #ffffff);
+  border: 1px solid var(--shell-popover-border, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-xl, 12px);
+  box-shadow: var(--shadow-4, 0 16px 48px rgba(0, 0, 0, 0.7));
+
+  font-family: var(--font-ui, Ubuntu, 'Ubuntu Sans', system-ui, sans-serif);
+
+  transform: translateY(-10px);
+  opacity: 0;
+  transition:
+    transform var(--dur-med, 200ms) var(--ease-out, cubic-bezier(0.2, 0, 0, 1)),
+    opacity var(--dur-fast, 120ms) linear;
+}
+
+.run-dialog-layer--in .run-dialog {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* The entry and its ghost must share every metric that affects layout. */
+.run-dialog__entry {
+  position: relative;
+  display: block;
+
+  --run-entry-padding-x: 12px;
+  --run-entry-padding-y: 9px;
+  --run-entry-font-size: 15px;
+  --run-entry-line-height: 22px;
+}
+
+.run-dialog__entry[hidden] {
+  display: none;
+}
+
+.run-dialog__input,
+.run-dialog__ghost {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+
+  padding: var(--run-entry-padding-y) var(--run-entry-padding-x);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg, 9px);
+
+  font-family: inherit;
+  font-size: var(--run-entry-font-size);
+  line-height: var(--run-entry-line-height);
+  letter-spacing: normal;
+  white-space: pre;
+}
+
+.run-dialog__input {
+  position: relative;
+  z-index: 1;
+
+  color: var(--shell-fg, #ffffff);
+  background: var(--shell-toggle-bg, #3e3e3e);
+  outline: none;
+  caret-color: var(--accent, #e95420);
+}
+
+.run-dialog__input:focus {
+  border-color: var(--accent, #e95420);
+  box-shadow: 0 0 0 1px var(--accent, #e95420);
+}
+
+.run-dialog__input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.run-dialog__ghost {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+
+  overflow: hidden;
+  pointer-events: none;
+  background: transparent;
+}
+
+/* Only the completion is visible; the typed half reserves the width. */
+.run-dialog__ghost-typed {
+  color: transparent;
+}
+
+.run-dialog__ghost-rest {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.run-dialog__ghost-rest[hidden] {
+  display: none;
+}
+
+/* --- hint line ---------------------------------------------------- */
+
+.run-dialog__hint {
+  padding: var(--sp-2, 8px) 2px 0;
+
+  font-size: 12px;
+  line-height: 16px;
+  color: rgba(255, 255, 255, 0.55);
+  text-align: center;
+}
+
+/* --- error state -------------------------------------------------- */
+
+/* GNOME underlines the entry in red and shakes it once. */
+.run-dialog--error .run-dialog__input {
+  border-color: var(--error, #f66151);
+  box-shadow:
+    0 0 0 1px var(--error, #f66151),
+    inset 0 -2px 0 var(--error, #f66151);
+  animation: run-dialog-shake 220ms var(--ease-in-out, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.run-dialog--error .run-dialog__hint {
+  color: var(--error, #f66151);
+}
+
+@keyframes run-dialog-shake {
+  0%,
+  100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* --- Looking Glass ------------------------------------------------ */
+
+.run-dialog--glass {
+  width: min(680px, 100%);
+}
+
+.run-dialog__glass {
+  outline: none;
+  font-family: var(--font-mono, 'Ubuntu Mono', 'Fira Code', monospace);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.run-dialog__glass-title {
+  margin-bottom: var(--sp-3, 12px);
+
+  font-family: var(--font-ui, Ubuntu, system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent, #e95420);
+}
+
+.run-dialog__glass-section {
+  margin-top: var(--sp-3, 12px);
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+  font-family: var(--font-ui, Ubuntu, system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.run-dialog__glass-list {
+  display: grid;
+  grid-template-columns: minmax(0, 11em) minmax(0, 1fr);
+  gap: 0 var(--sp-3, 12px);
+  margin: var(--sp-2, 8px) 0 0;
+}
+
+.run-dialog__glass-list dt {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.6);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-dialog__glass-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--shell-fg, #ffffff);
+}
+
+.run-dialog__glass-hint {
+  margin-top: var(--sp-4, 16px);
+
+  font-family: var(--font-ui, Ubuntu, system-ui, sans-serif);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  text-align: center;
+}
+
+/* --- reduced motion ----------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .run-dialog {
+    transition: none;
+    transform: none;
+  }
+
+  .run-dialog--error .run-dialog__input {
+    animation: none;
+  }
+}

@@ -1,0 +1,504 @@
+/* ------------------------------------------------------------------
+   css/apps/terminal.css — Terminal (gnome-terminal 3.52 on Yaru)
+
+   The window chrome is dark in both themes (the app declares
+   `darkChrome`), and so is the terminal itself: gnome-terminal keeps the
+   Yaru aubergine scheme whatever the desktop style is, so nothing in
+   here is lightened under the light theme.
+
+   Geometry that JavaScript depends on:
+     - `.terminal-app` carries `--term-font-size`, written inline by
+       js/apps/terminal/index.js for Ctrl+± / Ctrl+0 zoom. Everything
+       below sizes itself in `em` so the whole view scales with it.
+     - `.term-measure` is appended to `.term-body` for one frame to
+       measure the cell size, so it must share the line font exactly.
+     - `.term-tabbar` gets `.is-single` while only one tab is open.
+     - `.term-view` gets `.is-active` on the visible session.
+     - `.term-inputline` gets `.is-focused` (hidden textarea focused),
+       `.is-busy` (a command is running) and `.is-hidden-input`
+       (a password `ask()` is in progress).
+
+   Owns:  .terminal-app and every .term-* class, plus the body-level
+          .term-menu popup.
+   ------------------------------------------------------------------ */
+
+/* --- shell ---------------------------------------------------------- */
+
+.terminal-app {
+  --term-font-size: 14px;
+  --term-line-height: 1.35;
+  --term-tab-bg: rgba(0, 0, 0, 0.32);
+  --term-tab-hover: rgba(255, 255, 255, 0.07);
+  --term-tab-active: rgba(255, 255, 255, 0.14);
+  --term-tab-line: rgba(255, 255, 255, 0.09);
+  --term-tab-fg: rgba(255, 255, 255, 0.62);
+  --term-tab-fg-active: #ffffff;
+
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+
+  background-color: var(--term-bg, #300a24);
+  color: var(--term-fg, #ffffff);
+
+  font-family: var(--font-mono);
+  font-size: var(--term-font-size, 14px);
+  line-height: var(--term-line-height);
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'calt' 0;
+  tab-size: 8;
+}
+
+/* The 95% wash lets the window background show through the way a
+   gnome-terminal profile with transparency does. Guarded, because the
+   fallback has to stay fully opaque rather than fall back to nothing. */
+@supports (background-color: color-mix(in srgb, red 95%, transparent)) {
+  .terminal-app {
+    background-color: color-mix(in srgb, var(--term-bg, #300a24) 95%, transparent);
+    -webkit-backdrop-filter: blur(6px) saturate(1.15);
+    backdrop-filter: blur(6px) saturate(1.15);
+  }
+}
+
+/* --- tab strip ------------------------------------------------------- */
+
+.term-tabbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+
+  height: 34px;
+  background: var(--term-tab-bg);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+
+  /* Chrome, not content: the tab strip must not zoom with Ctrl+±. */
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.3;
+  user-select: none;
+}
+
+/* gnome-terminal only shows the strip once a second session exists. */
+.term-tabbar.is-single {
+  display: none;
+}
+
+.term-tabstrip {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.term-tabstrip::-webkit-scrollbar {
+  height: 0;
+  width: 0;
+}
+
+.term-tab {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  min-width: 84px;
+  max-width: 230px;
+  padding: 0 4px 0 12px;
+
+  color: var(--term-tab-fg);
+  box-shadow: inset -1px 0 0 var(--term-tab-line);
+  cursor: default;
+  transition: background 90ms ease, color 90ms ease;
+}
+
+.term-tab:hover {
+  background: var(--term-tab-hover);
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.term-tab.is-active {
+  background: var(--term-tab-active);
+  color: var(--term-tab-fg-active);
+  box-shadow:
+    inset -1px 0 0 var(--term-tab-line),
+    inset 0 -2px 0 var(--accent, #e95420);
+}
+
+.term-tab:focus-visible {
+  outline: 2px solid var(--accent, #e95420);
+  outline-offset: -2px;
+}
+
+.term-tab-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.term-tab-close,
+.term-tab-add {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 22px;
+  height: 22px;
+  padding: 0;
+
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1;
+  cursor: default;
+  transition: background 90ms ease, opacity 90ms ease;
+}
+
+.term-tab-close {
+  opacity: 0;
+}
+
+.term-tab:hover .term-tab-close,
+.term-tab.is-active .term-tab-close,
+.term-tab-close:focus-visible {
+  opacity: 1;
+}
+
+.term-tab-close:hover,
+.term-tab-add:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.term-tab-close:active,
+.term-tab-add:active {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.term-tab-add {
+  align-self: center;
+  width: 26px;
+  height: 26px;
+  margin: 0 4px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 17px;
+}
+
+/* --- session body ----------------------------------------------------- */
+
+.term-body {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Every session keeps its own scroll container; only the selected one is
+   in the flow, so scrollback position survives tab switches. */
+.term-view {
+  display: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+
+  padding: 6px 8px 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  /* The global reset turns selection off for the desktop; a terminal is
+     text and must behave like text. */
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.term-view.is-active {
+  display: block;
+}
+
+.term-view:focus,
+.term-view:focus-visible {
+  outline: none;
+}
+
+.term-scrollback {
+  display: block;
+}
+
+.terminal-app ::selection {
+  background: var(--term-selection, rgba(233, 84, 32, 0.4));
+  color: inherit;
+}
+
+/* --- lines ------------------------------------------------------------- */
+
+.term-line {
+  display: block;
+  min-height: 1.35em;           /* an empty line still occupies a row */
+
+  font-family: var(--font-mono);
+  font-size: 1em;               /* == --term-font-size, so zoom works */
+  line-height: var(--term-line-height);
+
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* --- the editable prompt line -------------------------------------------
+   prompt / pre / cursor / post are inline so a long command wraps as one
+   continuous line, exactly like readline redrawing a wrapped buffer. */
+
+.term-inputline {
+  position: relative;
+}
+
+.term-prompt,
+.term-edit,
+.term-pre,
+.term-post {
+  display: inline;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* While a command runs the prompt is gone but the textarea stays in the
+   DOM and focusable, so Ctrl+C still reaches the running job. */
+.term-inputline.is-busy {
+  min-height: 0;
+}
+
+.term-inputline.is-busy .term-prompt,
+.term-inputline.is-busy .term-edit {
+  display: none;
+}
+
+/* --- cursor -------------------------------------------------------------
+   Focused: a solid block that blinks. Unfocused: gnome-terminal's hollow
+   outline, and no animation at all.
+
+   inline-block, because a plain inline background only covers the glyph
+   box and reads as a half-height cursor; the box is one cell instead.
+   The inner line-height matches the outer one, so the baseline does not
+   move and the character under the cursor stays where it was. */
+.term-cursor {
+  display: inline-block;
+  min-width: 1ch;
+  height: calc(1em * var(--term-line-height));
+  line-height: var(--term-line-height);
+  vertical-align: baseline;
+  white-space: pre;
+
+  background: transparent;
+  color: inherit;
+  box-shadow: inset 0 0 0 1px var(--term-fg, #ffffff);
+}
+
+.term-inputline.is-focused .term-cursor {
+  background: var(--term-fg, #ffffff);
+  color: var(--term-bg, #300a24);
+  box-shadow: none;
+  animation: term-cursor-blink 1.2s step-end infinite;
+}
+
+@keyframes term-cursor-blink {
+  0%,
+  50% {
+    background: var(--term-fg, #ffffff);
+    color: var(--term-bg, #300a24);
+  }
+
+  50.01%,
+  100% {
+    background: transparent;
+    color: inherit;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .term-inputline.is-focused .term-cursor {
+    animation: none;
+  }
+}
+
+/* --- hidden input + measurement probe ------------------------------------ */
+
+.term-keyboard {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 1;
+
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+
+  font-family: var(--font-mono);
+  font-size: 1em;
+  line-height: 1;
+
+  opacity: 0;
+  white-space: pre;
+  /* Never let the caret inside a 1px box drag the scroll container. */
+  overscroll-behavior: contain;
+}
+
+.term-keyboard:focus,
+.term-keyboard:focus-visible {
+  outline: none;
+}
+
+.term-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  pointer-events: none;
+
+  font-family: var(--font-mono);
+  font-size: 1em;
+  line-height: var(--term-line-height);
+  white-space: pre;
+}
+
+/* --- scrollbars ---------------------------------------------------------- */
+
+.term-view {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+.term-view::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.term-view::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.term-view::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.26);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 8px;
+}
+
+.term-view::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.42);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* --- right-click menu -----------------------------------------------------
+   Appended to <body>, so it is styled standalone. Dark Adwaita, matching
+   css/shell/context-menu.css's `--dark` popover. */
+
+.term-menu {
+  position: fixed;
+  z-index: var(--z-menu, 1200);
+
+  min-width: 200px;
+  max-width: 320px;
+  padding: 6px;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(51, 51, 51, 0.97);
+  -webkit-backdrop-filter: blur(28px) saturate(1.3);
+  backdrop-filter: blur(28px) saturate(1.3);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.34),
+    0 10px 34px rgba(0, 0, 0, 0.48);
+
+  color: #ffffff;
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  line-height: 1.3;
+  user-select: none;
+}
+
+.term-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 9px;
+
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+
+  font: inherit;
+  text-align: left;
+  cursor: default;
+  transition: background 90ms ease;
+}
+
+.term-menu-item:hover:not(:disabled),
+.term-menu-item:focus-visible:not(:disabled) {
+  background: rgba(255, 255, 255, 0.11);
+  outline: none;
+}
+
+.term-menu-item:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.19);
+}
+
+.term-menu-item:disabled {
+  color: rgba(255, 255, 255, 0.4);
+  opacity: 1;
+  cursor: default;
+}
+
+.term-menu-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.term-menu-accel {
+  flex: 0 0 auto;
+  padding-left: 16px;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.term-menu-sep {
+  height: 1px;
+  margin: 5px 6px;
+  background: rgba(255, 255, 255, 0.12);
+}

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI TERMINAL ACCESS</title>
+    
+    <!-- Google Fonts for Terminal Look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===================================================================
+           CSS STYLES
+           =================================================================== */
+        
+        /* 1. Reset & Base */
+        html { box-sizing: border-box; }
+        *, *::before, *::after { box-sizing: inherit; }
+
+        body {
+            background-color: #050505;
+            color: #ccc;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* 2. Container */
+        .terminal-container {
+            width: 100%;
+            max-width: 900px;
+            height: 80vh;
+            background: #000;
+            border: 2px solid #444;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.05);
+            position: relative;
+        }
+
+        /* 3. Header */
+        .terminal-header {
+            background: #1a1a1a;
+            color: #888;
+            padding: 8px 15px;
+            font-size: 13px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .header-title { color: #00ff41; font-weight: bold; letter-spacing: 1px; }
+        .status-dot { height: 8px; width: 8px; background-color: #ff0000; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .status-online { background-color: #00ff41; box-shadow: 0 0 5px #00ff41; }
+
+        /* 4. Output Area */
+        .terminal-output {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            font-size: 15px;
+            line-height: 1.5;
+            scrollbar-width: thin;
+            scrollbar-color: #444 #111;
+        }
+        
+        /* Output Text Colors */
+        .sys-msg { color: #ffff00; }  /* Yellow */
+        .ai-msg { color: #00ff41; }   /* Hacker Green */
+        .user-msg { color: #fff; }    /* White */
+        .err-msg { color: #ff3333; }  /* Red */
+        .info-msg { color: #00ccff; } /* Cyan */
+
+        /* Scrollbar styling */
+        .terminal-output::-webkit-scrollbar { width: 8px; }
+        .terminal-output::-webkit-scrollbar-track { background: #111; }
+        .terminal-output::-webkit-scrollbar-thumb { background: #444; }
+
+        /* 5. Input Area */
+        .terminal-input-area {
+            border-top: 1px solid #444;
+            padding: 15px;
+            background: #0a0a0a;
+            display: flex;
+            align-items: center;
+        }
+
+        .prompt { color: #00ff41; margin-right: 10px; font-weight: bold; }
+        
+        .terminal-input {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'Fira Code', monospace;
+            font-size: 15px;
+            outline: none;
+        }
+
+        /* 6. Settings Modal (Overlay) */
+        .api-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #111;
+            border: 1px solid #00ff41;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            z-index: 100;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            display: none; /* Hidden by default */
+        }
+        
+        .api-modal h2 { color: #00ff41; margin-top: 0; font-weight: 300; text-transform: uppercase; }
+        .api-modal p { font-size: 13px; color: #aaa; margin-bottom: 20px; }
+        
+        .api-input {
+            width: 100%;
+            padding: 10px;
+            background: #000;
+            border: 1px solid #444;
+            color: #fff;
+            font-family: monospace;
+            margin-bottom: 15px;
+            outline: none;
+        }
+        .api-input:focus { border-color: #00ff41; }
+
+        .btn-connect {
+            background: #00ff41;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: monospace;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.2s;
+        }
+        .btn-connect:hover { background: #fff; }
+
+        /* Setup Button in Header */
+        .btn-setup {
+            background: transparent;
+            border: 1px solid #444;
+            color: #888;
+            padding: 2px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .btn-setup:hover { border-color: #888; color: #fff; }
+
+        /* Typing cursor effect */
+        .typing::after {
+            content: '█';
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+    </style>
+</head>
+<body>
+
+    <!-- Main Terminal Container -->
+    <div class="terminal-container">
+        
+        <!-- Header -->
+        <div class="terminal-header">
+            <div>
+                <span class="header-title">GEMINI-CORE_TERMINAL</span>
+                <span style="font-size:10px; color:#555; margin-left:10px;">v.2.0.4</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <span id="statusDot" class="status-dot"></span>
+                <span id="statusText">DISCONNECTED</span>
+                <button class="btn-setup" onclick="showModal()">CONFIG</button>
+            </div>
+        </div>
+
+        <!-- Output Screen -->
+        <div class="terminal-output" id="terminalOutput">
+            <p class="sys-msg">SYSTEM: Initializing Text-Only Interface...</p>
+            <p class="sys-msg">SYSTEM: Security Protocols Active.</p>
+            <p class="info-msg">INFO: This terminal does not support image generation or file uploads.</p>
+            <p class="sys-msg">SYSTEM: Waiting for API Configuration...</p>
+            <p class="err-msg">ALERT: API Key missing. Click [CONFIG] to connect.</p>
+        </div>
+
+        <!-- Input Line -->
+        <div class="terminal-input-area">
+            <span class="prompt">USER@ROOT:~$</span>
+            <input type="text" class="terminal-input" id="terminalInput" autocomplete="off" placeholder="Enter command..." onkeypress="handleEnter(event)">
+        </div>
+
+        <!-- API Setup Modal -->
+        <div class="api-modal" id="apiModal">
+            <h2>System Configuration</h2>
+            <p>Enter your Google Gemini API Key to establish uplink.<br>Keys are stored in volatile memory only.</p>
+            <input type="password" id="apiKeyInput" class="api-input" placeholder="Paste API Key here...">
+            <button class="btn-connect" onclick="saveKey()">ESTABLISH UPLINK</button>
+            <div style="margin-top:10px; font-size:11px; color:#555; cursor:pointer;" onclick="hideModal()">[CANCEL]</div>
+        </div>
+
+    </div>
+
+    <script>
+        /* ===================================================================
+           JAVASCRIPT LOGIC
+           =================================================================== */
+
+        let GEMINI_API_KEY = "";
+        const outputDiv = document.getElementById('terminalOutput');
+        const inputField = document.getElementById('terminalInput');
+        const modal = document.getElementById('apiModal');
+        const statusText = document.getElementById('statusText');
+        const statusDot = document.getElementById('statusDot');
+
+        // 1. Initial Setup
+        window.onload = function() {
+            inputField.focus();
+        };
+
+        // 2. Modal Controls
+        function showModal() {
+            modal.style.display = 'block';
+            document.getElementById('apiKeyInput').focus();
+        }
+
+        function hideModal() {
+            modal.style.display = 'none';
+            inputField.focus();
+        }
+
+        function saveKey() {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (key.length > 10) {
+                GEMINI_API_KEY = key;
+                hideModal();
+                updateStatus(true);
+                printToTerminal("SYSTEM: Uplink Established. API Key Accepted.", "sys-msg");
+                printToTerminal("AI: Online. I am ready to process text-based queries.", "ai-msg");
+            } else {
+                alert("Invalid Key format.");
+            }
+        }
+
+        function updateStatus(isOnline) {
+            if (isOnline) {
+                statusText.innerText = "CONNECTED";
+                statusText.style.color = "#00ff41";
+                statusDot.classList.add("status-online");
+            } else {
+                statusText.innerText = "DISCONNECTED";
+                statusText.style.color = "#888";
+                statusDot.classList.remove("status-online");
+            }
+        }
+
+        // 3. Input Handling
+        function handleEnter(e) {
+            if (e.key === 'Enter') {
+                const query = inputField.value.trim();
+                if (!query) return;
+
+                // Print User Command
+                printToTerminal(`USER: ${query}`, "user-msg");
+                inputField.value = "";
+
+                // Local Commands
+                if (query.toLowerCase() === "/clear") {
+                    outputDiv.innerHTML = "";
+                    return;
+                }
+                if (query.toLowerCase() === "/help") {
+                    printToTerminal("AI: [HELP PROTOCOL]", "info-msg");
+                    printToTerminal(" - /clear : Clear terminal screen", "info-msg");
+                    printToTerminal(" - /status : Check connection status", "info-msg");
+                    printToTerminal(" - Any text : Send query to AI", "info-msg");
+                    printToTerminal(" - NOTE : Image/File capabilities are DISABLED.", "err-msg");
+                    return;
+                }
+                if (query.toLowerCase() === "/status") {
+                    const stat = GEMINI_API_KEY ? "ONLINE" : "OFFLINE";
+                    printToTerminal(`SYSTEM: Current Status is [${stat}]`, "sys-msg");
+                    return;
+                }
+
+                // Check API Key
+                if (!GEMINI_API_KEY) {
+                    printToTerminal("ERROR: Uplink Required. Use [CONFIG] button.", "err-msg");
+                    showModal();
+                    return;
+                }
+
+                // Send to AI
+                askGemini(query);
+            }
+        }
+
+        // 4. Terminal Output
+        function printToTerminal(text, className) {
+            const p = document.createElement('p');
+            p.className = className;
+            p.textContent = text;
+            outputDiv.appendChild(p);
+            
+            // Auto-scroll to bottom
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+
+        // 5. AI Communication Logic
+        async function askGemini(userQuery) {
+            // Typing Indicator
+            const typingIndicator = document.createElement('p');
+            typingIndicator.className = "ai-msg typing";
+            typingIndicator.innerText = "AI: Processing...";
+            outputDiv.appendChild(typingIndicator);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+
+            // Strict Text-Only System Prompt
+            const systemInstruction = `
+                You are a pure text-based AI Terminal Assistant.
+                
+                DIRECTIVES:
+                1. You can answer ANY general question (coding, math, writing, history, etc).
+                2. You MUST NOT attempt to generate images, ASCII art, or request file uploads.
+                3. If the user asks for images or files, reply: "SYSTEM ALERT: Visual output module is offline."
+                4. Keep your responses concise and formatted for a CLI environment.
+                5. Do not use Markdown (like **bold** or # headers) excessively; plain text is preferred.
+            `;
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            
+            const payload = {
+                contents: [{
+                    parts: [{
+                        text: systemInstruction + "\n\nUser Query: " + userQuery
+                    }]
+                }]
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                // Remove typing indicator
+                outputDiv.removeChild(typingIndicator);
+
+                if (data.error) {
+                    printToTerminal(`API ERROR: ${data.error.message}`, "err-msg");
+                } else if (data.candidates && data.candidates[0].content) {
+                    const aiText = data.candidates[0].content.parts[0].text;
+                    // Split multiline responses for better terminal look
+                    const lines = aiText.split('\n');
+                    lines.forEach(line => {
+                        if(line.trim() !== "") printToTerminal("AI: " + line, "ai-msg");
+                    });
+                } else {
+                    printToTerminal("SYSTEM ERROR: Empty response from Neural Net.", "err-msg");
+                }
+
+            } catch (error) {
+                if(outputDiv.contains(typingIndicator)) outputDiv.removeChild(typingIndicator);
+                printToTerminal("NETWORK ERROR: Connection Failed.", "err-msg");
+                console.error(error);
+            }
+        }
+
+    </script>
+</body>
+</html>

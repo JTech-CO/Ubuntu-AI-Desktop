@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ubuntu AI Desktop v4.7</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===================================================================
+           1. CORE STYLES & VARIABLES
+           =================================================================== */
+        :root {
+            --ai-color: #00ff41; /* Default AI Text Color */
+            --ub-orange: #e95420;
+            --ub-grey: #333333;
+            --ub-light-grey: #f0f0f0;
+            --win-header-height: 32px;
+            --dock-width: 60px;
+            --top-bar-height: 28px;
+            
+            /* VS Code Specific Colors */
+            --vs-bg: #1e1e1e;
+            --vs-sidebar: #252526;
+            --vs-status: #007acc;
+            --vs-activity: #333333;
+            --code-keyword: #c586c0;
+            --code-func: #dcdcaa;
+            --code-str: #ce9178;
+            --code-comment: #6a9955;
+            --code-fg: #d4d4d4;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            font-family: 'Ubuntu', sans-serif;
+            user-select: none;
+            background-color: #000;
+        }
+
+        /* Brightness Overlay */
+        #brightness-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; opacity: 0; pointer-events: none;
+            z-index: 9999; transition: opacity 0.1s linear;
+        }
+        
+        /* Power Off Overlay */
+        #power-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; opacity: 0; pointer-events: none;
+            z-index: 10000; display: none;
+        }
+        #power-overlay.active {
+            display: block; opacity: 1; pointer-events: auto; cursor: none;
+        }
+
+        /* Wallpaper */
+        #desktop-bg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: url('https://i.imgur.com/nbM254Q.jpeg') no-repeat center center fixed;
+            background-size: cover;
+            z-index: 0;
+            transition: background-image 0.5s ease, transform 0.3s ease, filter 0.3s ease;
+        }
+
+        /* Top Status Bar */
+        .top-bar {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: var(--top-bar-height);
+            background: rgba(0, 0, 0, 0.85);
+            color: #ddd;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        .top-btn { cursor: pointer; padding: 0 5px; font-weight: 500; }
+        .top-btn:hover { color: #fff; text-shadow: 0 0 5px rgba(255,255,255,0.3); }
+        
+        /* Top Right Group */
+        .top-right-group {
+            display: flex; gap: 15px; font-size: 16px; align-items: center;
+            height: 100%; padding: 0 10px; cursor: pointer;
+        }
+        .top-right-group:hover { background: rgba(255,255,255,0.1); }
+        .top-right-group.active { background: rgba(255,255,255,0.2); }
+
+        /* System Menu (Dropdown) */
+        .system-menu {
+            position: absolute; top: 35px; right: 10px; width: 320px;
+            background: #2c2c2c; border-radius: 12px; padding: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1);
+            display: none; flex-direction: column; gap: 15px; z-index: 5000;
+            color: #fff; font-size: 14px;
+        }
+        .system-menu.visible { display: flex; animation: menuFadeIn 0.2s; }
+        @keyframes menuFadeIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+        
+        .sys-slider-row { display: flex; align-items: center; gap: 15px; }
+        .sys-icon { width: 20px; text-align: center; }
+        .sys-slider {
+            flex: 1; -webkit-appearance: none; height: 6px; background: #444;
+            border-radius: 3px; outline: none;
+        }
+        .sys-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 18px; height: 18px;
+            background: #f0f0f0; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        .sys-list { display: flex; flex-direction: column; gap: 2px; }
+        .sys-item {
+            padding: 10px 12px; border-radius: 6px; display: flex; justify-content: space-between;
+            align-items: center; cursor: default;
+        }
+        .sys-item:hover { background: rgba(255,255,255,0.05); }
+        .sys-item-left { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+        .sys-item-right { font-size: 12px; color: #aaa; }
+        
+        .sys-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            border-top: 1px solid #444; padding-top: 10px; margin-top: 5px;
+        }
+        .sys-round-btn {
+            width: 40px; height: 40px; border-radius: 50%; background: #3e3e3e;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            font-size: 18px; transition: background 0.2s;
+        }
+        .sys-round-btn:hover { background: #4e4e4e; }
+
+
+        /* Left Dock */
+        .dock {
+            position: absolute;
+            top: var(--top-bar-height); left: 0; bottom: 0;
+            width: var(--dock-width);
+            background: rgba(0, 0, 0, 0.6);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 10px;
+            backdrop-filter: blur(8px);
+        }
+
+        .app-icon {
+            width: 48px; height: 48px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            position: relative;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .app-icon img, .app-icon svg {
+            width: 32px; height: 32px;
+            pointer-events: none;
+        }
+        
+        .app-icon:hover { transform: scale(1.05); background: rgba(255,255,255,0.15); }
+        
+        .app-icon.active::before {
+            content: ''; position: absolute; left: -8px; top: 50%; transform: translateY(-50%);
+            width: 4px; height: 8px; background: var(--ub-orange); border-radius: 0 2px 2px 0;
+        }
+        
+        .app-icon.running::after {
+            content: ''; position: absolute; left: 2px; top: 50%; transform: translateY(-50%);
+            width: 4px; height: 4px; background: #fff; border-radius: 50%; opacity: 0.7;
+        }
+
+        #icon-trash { margin-top: auto; margin-bottom: 20px; }
+
+        /* ===================================================================
+           2. WINDOW SYSTEM
+           =================================================================== */
+
+        #windows-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 10;
+        }
+
+        .window {
+            position: absolute;
+            background: #2c2c2c;
+            border-radius: 8px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.2);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #444;
+            min-width: 300px; min-height: 200px;
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            transform: scale(0.95);
+            pointer-events: auto;
+        }
+
+        .window.visible { opacity: 1; transform: scale(1); }
+        .window.maximized {
+            top: var(--top-bar-height) !important;
+            left: var(--dock-width) !important;
+            width: calc(100% - var(--dock-width)) !important;
+            height: calc(100% - var(--top-bar-height)) !important;
+            border-radius: 0 !important;
+            border: none !important;
+            transform: none !important;
+        }
+
+        body.overview #windows-container .window {
+            transform: scale(0.8); opacity: 0.8; cursor: pointer; border: 2px solid var(--ub-orange);
+        }
+        body.overview #desktop-bg { transform: scale(1.05); filter: blur(5px); }
+
+        .window-header {
+            height: var(--win-header-height);
+            background: linear-gradient(to bottom, #3c3b37, #2c2b29);
+            display: flex; align-items: center; justify-content: center;
+            padding: 0 10px; cursor: grab; border-bottom: 1px solid #1a1a1a;
+            flex-shrink: 0; position: relative;
+        }
+        .window-header:active { cursor: grabbing; }
+        .window-title { color: #ddd; font-size: 14px; font-weight: bold; pointer-events: none; }
+        .window-controls { position: absolute; right: 10px; display: flex; gap: 8px; }
+        .win-btn {
+            width: 18px; height: 18px; border-radius: 50%; border: none;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; color: rgba(0,0,0,0.6); cursor: pointer; padding: 0;
+        }
+        .btn-close { background: #e95420; }
+        .btn-max { background: #dcdcdc; }
+        .btn-min { background: #dcdcdc; }
+        .win-btn:hover { filter: brightness(1.2); color: #000; }
+
+        /* ===================================================================
+           3. APP SPECIFIC STYLES
+           =================================================================== */
+
+        /* --- Terminal --- */
+        #win-terminal { width: 800px; height: 500px; background: #000; }
+        .terminal-content { flex: 1; display: flex; flex-direction: column; background: #050505; color: #ccc; font-family: 'Fira Code', monospace; overflow: hidden; }
+        .terminal-output { flex-grow: 1; padding: 15px; overflow-y: auto; font-size: 14px; line-height: 1.4; scrollbar-width: thin; scrollbar-color: #444 #111; }
+        .terminal-output p { margin: 0; min-height: 1.2em; white-space: pre-wrap; }
+        .sys-msg { color: #ffff00; }
+        .ai-msg { color: var(--ai-color); }
+        .user-msg { color: #fff; }
+        .err-msg { color: #ff3333; }
+        .info-msg { color: #00ccff; }
+        .input-request-msg { color: #e95420; font-weight: bold; }
+        .terminal-input-area { border-top: 1px solid #333; padding: 10px 15px; background: #0a0a0a; display: flex; align-items: flex-start; }
+        .prompt { color: var(--ai-color); margin-right: 10px; font-weight: bold; }
+        .terminal-input { flex-grow: 1; background: transparent; border: none; color: #fff; font-family: 'Fira Code', monospace; font-size: 14px; outline: none; resize: none; height: 24px; line-height: 1.5; }
+
+        /* --- Settings --- */
+        #win-settings { width: 700px; height: 500px; background: #fafafa; color: #333; }
+        #win-settings .window-header { background: #f6f6f6; border-bottom: 1px solid #ddd; }
+        #win-settings .window-title { color: #333; }
+        .settings-layout { display: flex; height: 100%; }
+        .settings-sidebar { width: 200px; background: #f0f0f0; border-right: 1px solid #ddd; padding: 20px 0; }
+        .settings-nav-item { padding: 10px 20px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 10px; }
+        .settings-nav-item:hover { background: #e0e0e0; }
+        .settings-nav-item.active { background: #ddd; font-weight: bold; border-left: 4px solid var(--ub-orange); }
+        .settings-content { flex: 1; padding: 30px; overflow-y: auto; }
+        .settings-section { display: none; }
+        .settings-section.active { display: block; animation: fadeIn 0.3s; }
+        .st-group { margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        .st-label { display: block; margin-bottom: 10px; font-weight: bold; color: #444; }
+        .st-desc { font-size: 12px; color: #666; margin-bottom: 10px; }
+        .wp-grid { display: flex; gap: 10px; }
+        .wp-option { width: 80px; height: 50px; border-radius: 4px; cursor: pointer; background-size: cover; border: 2px solid transparent; }
+        .wp-option.selected { border-color: var(--ub-orange); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .ub-input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: 'Ubuntu'; margin-bottom: 10px; }
+        .ub-btn { background: var(--ub-orange); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .ub-btn:hover { opacity: 0.9; }
+
+        /* --- Files & Trash --- */
+        #win-files, #win-trash { width: 800px; height: 550px; background: #fff; color: #333; }
+        #win-files .window-header, #win-trash .window-header { background: #f6f6f6; border-bottom: 1px solid #ddd; }
+        #win-files .window-title, #win-trash .window-title { color: #333; }
+        .files-layout { display: flex; height: 100%; }
+        .files-sidebar { width: 180px; background: #f6f6f6; border-right: 1px solid #ddd; padding: 10px 0; }
+        .files-sidebar-item { padding: 8px 15px; cursor: pointer; font-size: 14px; color: #444; display: flex; align-items: center; gap: 8px; }
+        .files-sidebar-item:hover { background: #e6e6e6; }
+        .files-sidebar-item.active { background: #ddd; }
+        .files-main { flex: 1; display: flex; flex-direction: column; }
+        .files-path { padding: 10px 15px; border-bottom: 1px solid #eee; background: #fff; color: #666; font-size: 13px; display: flex; gap: 5px; }
+        .files-grid { padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 15px; overflow-y: auto; }
+        .file-item { display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; padding: 10px; border-radius: 4px; }
+        .file-item:hover { background: #f0f0f0; }
+        .file-item.selected { background: #e8e8e8; outline: 1px solid #ddd; }
+        .file-icon { font-size: 32px; margin-bottom: 8px; }
+        .file-name { font-size: 13px; color: #333; word-break: break-all; }
+        .trash-toolbar { padding: 10px; background: #fff1f0; border-bottom: 1px solid #ffccc7; display: flex; justify-content: flex-end; }
+        .trash-btn { background: #ff4d4f; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .trash-btn:hover { background: #ff7875; }
+
+        /* --- System Monitor --- */
+        #win-monitor { width: 650px; height: 450px; background: #fff; color: #333; }
+        #win-monitor .window-header { background: #fff; border-bottom: 1px solid #eee; }
+        #win-monitor .window-title { color: #333; }
+        .monitor-tabs { display: flex; padding: 0 10px; background: #fafafa; border-bottom: 1px solid #ddd; }
+        .monitor-tab { padding: 10px 20px; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; color: #666; }
+        .monitor-tab.active { border-bottom-color: var(--ub-orange); color: #333; font-weight: bold; }
+        .monitor-content { padding: 20px; height: calc(100% - 40px); overflow-y: auto; }
+        .graph-container { margin-bottom: 20px; border: 1px solid #eee; border-radius: 4px; padding: 15px; background: #fff; position: relative;}
+        .graph-header { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; font-weight: bold; color: #444; }
+        .graph-value { color: var(--ub-orange); font-family: 'Fira Code', monospace; }
+        canvas { width: 100%; height: 100px; background: #fcfcfc; border: 1px solid #f0f0f0; }
+
+        /* --- Text Editor --- */
+        #win-editor { width: 700px; height: 500px; background: #fff; }
+        #win-editor .window-header { background: #f6f6f6; border-bottom: 1px solid #ddd; }
+        #win-editor .window-title { color: #333; }
+        .editor-menu { display: flex; gap: 15px; padding: 5px 10px; background: #fff; border-bottom: 1px solid #eee; font-size: 13px; color: #333; }
+        .editor-textarea { width: 100%; height: calc(100% - 30px); border: none; padding: 15px; font-family: 'JetBrains Mono', monospace; font-size: 14px; resize: none; outline: none; line-height: 1.6; color: #333; }
+
+        /* --- Code-OSS (The AI IDE) --- */
+        #win-vscode { width: 1000px; height: 650px; background: var(--vs-bg); color: #ccc; display:none; }
+        #win-vscode .window-header { background: var(--vs-sidebar); border-bottom: 1px solid #333; }
+        .vscode-layout { display: flex; height: 100%; overflow: hidden; }
+        .vscode-activity-bar { width: 50px; background: var(--vs-activity); display: flex; flex-direction: column; align-items: center; padding-top: 10px; flex-shrink: 0; border-right: 1px solid #444; }
+        .lang-btn { width: 36px; height: 36px; margin-bottom: 15px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #888; transition: all 0.2s; font-size: 12px; }
+        .lang-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
+        .lang-btn.active { color: #fff; border-left: 2px solid var(--vs-status); background: rgba(255,255,255,0.05); }
+        .vscode-main { flex: 1; display: flex; flex-direction: column; position: relative; }
+        .vscode-tabs { display: flex; background: var(--vs-sidebar); height: 35px; align-items: center; border-bottom: 1px solid #333; }
+        .vscode-tab { padding: 0 15px; height: 100%; display: flex; align-items: center; background: var(--vs-bg); border-top: 2px solid var(--vs-status); font-size: 13px; color: #fff; }
+        .vscode-actions { display: flex; gap: 8px; margin-left: auto; padding-right: 10px; }
+        .vs-btn { background: #3c3c3c; color: #ccc; border: 1px solid #333; padding: 4px 10px; cursor: pointer; border-radius: 2px; font-size: 12px; display: flex; align-items: center; gap: 5px; }
+        .vs-btn:hover { background: #4c4c4c; color: #fff; }
+        .vs-btn-run { background: #0e639c; color: white; border-color: #0e639c; }
+        .vs-btn-run:hover { background: #1177bb; }
+        .vs-btn-save { background: #2d2d2d; color: #4ec9b0; border-color: #4ec9b0; }
+        .vscode-editor-container { position: relative; flex: 1; overflow: hidden; font-family: 'Fira Code', monospace; font-size: 14px; line-height: 1.5; letter-spacing: normal; }
+        #code-input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; color: transparent; caret-color: #fff; border: none; outline: none; resize: none; padding: 15px; z-index: 2; white-space: pre; overflow: auto; font-family: inherit; font-size: inherit; line-height: inherit; letter-spacing: inherit; }
+        #code-input::selection { background: rgba(51, 153, 255, 0.3); color: transparent; }
+        #code-display { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--vs-bg); color: var(--code-fg); margin: 0; padding: 15px; pointer-events: none; z-index: 1; white-space: pre; overflow: hidden; font-family: inherit; font-size: inherit; line-height: inherit; letter-spacing: inherit; }
+        .hljs-keyword { color: var(--code-keyword); }
+        .hljs-function { color: var(--code-func); }
+        .hljs-string { color: var(--code-str); }
+        .hljs-comment { color: var(--code-comment); font-style: italic; }
+        .hljs-number { color: #b5cea8; }
+        .vscode-console { height: 180px; background: var(--vs-sidebar); border-top: 1px solid #444; display: flex; flex-direction: column; }
+        .console-header { padding: 5px 15px; font-size: 11px; text-transform: uppercase; color: #ccc; background: #333; display: flex; justify-content: space-between; }
+        .console-output { flex: 1; padding: 10px; overflow-y: auto; font-family: 'Fira Code', monospace; font-size: 13px; color: #d4d4d4; white-space: pre-wrap; }
+        .console-prompt { color: var(--vs-status); margin-right: 5px; }
+        .agent-msg { color: #4ec9b0; }
+        .error-msg { color: #f14c4c; }
+        .vscode-statusbar { height: 22px; background: var(--vs-status); display: flex; align-items: center; padding: 0 10px; font-size: 11px; color: #fff; justify-content: space-between; flex-shrink: 0; }
+
+        /* --- Firefox Browser --- */
+        #win-firefox { width: 900px; height: 600px; background: #2b2a33; color: #f9f9fa; display: none; }
+        #win-firefox .window-header { background: #1c1b22; border-bottom: none; }
+        .fx-toolbar { height: 40px; background: #2b2a33; border-bottom: 1px solid #1c1b22; display: flex; align-items: center; padding: 0 10px; gap: 10px; }
+        .fx-btn { width: 28px; height: 28px; border: none; background: transparent; color: #fff; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .fx-btn:hover { background: rgba(255,255,255,0.1); }
+        .fx-url-bar { flex: 1; height: 30px; background: #1c1b22; border: 1px solid #1c1b22; border-radius: 4px; color: #fff; padding: 0 15px; font-size: 13px; display: flex; align-items: center; }
+        .fx-url-input { background: transparent; border: none; color: #fff; width: 100%; outline: none; }
+        .fx-content { flex: 1; background: #38383d; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+        .fx-start-page { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #2b2a33; color: #fff; }
+        .fx-logo-area { text-align: center; margin-bottom: 30px; }
+        .fx-search-box { width: 500px; height: 44px; background: #38383d; border-radius: 8px; display: flex; align-items: center; padding: 0 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .fx-search-input { width: 100%; background: transparent; border: none; color: #fff; font-size: 16px; outline: none; }
+        .fx-results { width: 100%; padding: 20px; overflow-y: auto; display: none; background: #fff; color: #333; height: 100%; }
+        .fx-result-item { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        .fx-result-title { color: #1a0dab; font-size: 18px; text-decoration: none; display: block; margin-bottom: 5px; cursor: pointer; }
+        .fx-result-title:hover { text-decoration: underline; }
+        .fx-result-url { color: #006621; font-size: 13px; margin-bottom: 5px; }
+        .fx-result-desc { font-size: 14px; color: #545454; line-height: 1.4; }
+
+        /* Notification Toast (Enhanced Style) */
+        #notification-container {
+            position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+            z-index: 5000; display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+        }
+        .toast {
+            background: rgba(28, 28, 28, 0.95); color: #fff; padding: 12px 20px;
+            border-radius: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            font-size: 14px; display: flex; align-items: center; gap: 10px;
+            opacity: 0; animation: toastSlide 0.3s forwards; pointer-events: auto;
+            border: 1px solid rgba(255,255,255,0.1); max-width: 400px;
+        }
+        @keyframes toastSlide { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .toast-icon { font-size: 18px; }
+
+        /* Utility */
+        .typing::after { content: '█'; animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    </style>
+</head>
+<body onclick="winManager.handleOverviewClick(event)">
+
+    <!-- Background -->
+    <div id="desktop-bg" oncontextmenu="return false;"></div>
+    
+    <!-- Brightness Overlay -->
+    <div id="brightness-overlay"></div>
+    
+    <!-- Power Overlay -->
+    <div id="power-overlay"></div>
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <span class="top-btn" style="font-weight:bold;" onclick="winManager.toggleOverview()">Activities</span>
+        <span class="top-btn" id="clock">Oct 24 10:30</span>
+        <div class="top-right-group" onclick="systemMenu.toggle()">
+            <span class="top-btn" title="Network">🛡️</span>
+            <span class="top-btn" title="Battery">🔋 100%</span>
+            <span class="top-btn" title="System Menu">▼</span>
+        </div>
+    </div>
+
+    <!-- System Menu Dropdown -->
+    <div class="system-menu" id="systemMenu">
+        <!-- Sliders -->
+        <div class="sys-slider-row">
+            <span class="sys-icon">🔊</span>
+            <input type="range" class="sys-slider" min="0" max="100" value="80">
+        </div>
+        <div class="sys-slider-row">
+            <span class="sys-icon">🔆</span>
+            <!-- Brightness Slider Logic: max-right=100 (transparent), max-left=0 (dark) -->
+            <input type="range" class="sys-slider" min="0" max="100" value="100" oninput="systemMenu.setBrightness(this.value)">
+        </div>
+        
+        <!-- Status List -->
+        <div class="sys-list">
+            <div class="sys-item">
+                <div class="sys-item-left"><span class="sys-icon">📶</span> Wi-Fi</div>
+                <div class="sys-item-right">Samsung_WiFi_5G</div>
+            </div>
+            <div class="sys-item">
+                <div class="sys-item-left"><span class="sys-icon">🦷</span> Bluetooth</div>
+                <div class="sys-item-right">Off</div>
+            </div>
+            <div class="sys-item">
+                <div class="sys-item-left"><span class="sys-icon">🖼️</span> Background</div>
+                <div class="sys-item-right">Bright</div>
+            </div>
+            <div class="sys-item">
+                <div class="sys-item-left"><span class="sys-icon">🔋</span> Power</div>
+                <div class="sys-item-right">Balanced</div>
+            </div>
+        </div>
+
+        <!-- Footer Buttons -->
+        <div class="sys-footer">
+            <div class="sys-round-btn" title="Settings" onclick="winManager.open('settings')">⚙️</div>
+            <div class="sys-round-btn" title="Power Off" onclick="systemMenu.powerOff()">⏻</div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <!-- Dock -->
+    <div class="dock">
+        <!-- Firefox -->
+        <div class="app-icon" id="icon-firefox" onclick="winManager.open('firefox')" title="Firefox Web Browser">
+            <img src="https://i.imgur.com/SH92o4T.png" alt="Firefox">
+        </div>
+        <!-- Terminal -->
+        <div class="app-icon" id="icon-terminal" onclick="winManager.open('terminal')" title="Gemini AI Terminal">
+            <img src="https://i.imgur.com/qD4p9K2.png" alt="Terminal">
+        </div>
+        <!-- Files -->
+        <div class="app-icon" id="icon-files" onclick="winManager.open('files')" title="Files">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#E95420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+        </div>
+        <!-- Editor -->
+        <div class="app-icon" id="icon-editor" onclick="winManager.open('editor')" title="Text Editor">
+             <svg viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        </div>
+        <!-- VS Code (Code-OSS) -->
+        <div class="app-icon" id="icon-vscode" onclick="winManager.open('vscode')" title="Code - OSS">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#007ACC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+        </div>
+        <!-- Monitor -->
+        <div class="app-icon" id="icon-monitor" onclick="winManager.open('monitor')" title="System Monitor">
+             <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        </div>
+        <!-- Settings -->
+        <div class="app-icon" id="icon-settings" onclick="winManager.open('settings')" title="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </div>
+        <!-- Trash (Bottom) -->
+        <div class="app-icon" id="icon-trash" onclick="winManager.open('trash')" title="Trash">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+        </div>
+    </div>
+
+    <!-- =========================
+         WINDOWS
+         ========================= -->
+    <div id="windows-container">
+
+        <!-- 1. TERMINAL WINDOW -->
+        <div id="win-terminal" class="window">
+            <div class="window-header" onmousedown="winManager.startDrag(event, 'win-terminal')">
+                <span class="window-title">Gemini Terminal</span>
+                <div class="window-controls">
+                    <button class="win-btn btn-min">_</button>
+                    <button class="win-btn btn-max" onclick="winManager.toggleMax('win-terminal')">□</button>
+                    <button class="win-btn btn-close" onclick="winManager.close('terminal')">×</button>
+                </div>
+            </div>
+            <div class="terminal-content" onclick="document.getElementById('terminalInput').focus()">
+                <div class="terminal-output" id="terminalOutput"></div>
+                <div class="terminal-input-area">
+                    <span class="prompt">user@gemini:~$</span>
+                    <textarea class="terminal-input" id="terminalInput" rows="1"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. SETTINGS WINDOW -->
+        <div id="win-settings" class="window">
+            <div class="window-header" onmousedown="winManager.startDrag(event, 'win-settings')">
+                <span class="window-title">Settings</span>
+                <div class="window-controls">
+                    <button class="win-btn btn-close" onclick="winManager.close('settings')">×</button>
+                </div>
+            </div>
+            <div class="settings-layout">
+                <div class="settings-sidebar">
+                    <div class="settings-nav-item active" onclick="settingsApp.nav('ai')">🤖 AI Config</div>
+                    <div class="settings-nav-item" onclick="settingsApp.nav('appearance')">🎨 Appearance</div>
+                </div>
+                <div class="settings-content">
+                    <div id="st-sec-ai" class="settings-section active">
+                        <h2 style="margin-top:0;">AI Configuration</h2>
+                        <div class="st-group">
+                            <label class="st-label">Gemini API Key</label>
+                            <input type="password" id="apiKeyInput" class="ub-input" placeholder="Enter your API key">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span id="apiKeyStatus" style="font-size:12px; color:#888;">Disconnected</span>
+                                <button class="ub-btn" onclick="settingsApp.saveKey()">Connect</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="st-sec-appearance" class="settings-section">
+                        <h2 style="margin-top:0;">Appearance</h2>
+                        <div class="st-group">
+                            <label class="st-label">Background</label>
+                            <div class="wp-grid">
+                                <div class="wp-option selected" title="Bright" style="background-image:url('https://i.imgur.com/nbM254Q.jpeg')" onclick="settingsApp.setBg(this, 'https://i.imgur.com/nbM254Q.jpeg')"></div>
+                                <div class="wp-option" title="Blue" style="background-image:url('https://i.imgur.com/41ZW4eR.jpeg')" onclick="settingsApp.setBg(this, 'https://i.imgur.com/41ZW4eR.jpeg')"></div>
+                                <div class="wp-option" title="Dusk" style="background-image:url('https://i.imgur.com/6TkhiSr.jpeg')" onclick="settingsApp.setBg(this, 'https://i.imgur.com/6TkhiSr.jpeg')"></div>
+                                <div class="wp-option" title="Dark" style="background-image:url('https://i.imgur.com/IJSySyr.jpeg')" onclick="settingsApp.setBg(this, 'https://i.imgur.com/IJSySyr.jpeg')"></div>
+                                <div class="wp-option" title="Kali" style="background-image:url('https://i.imgur.com/szYh9qS.jpeg')" onclick="settingsApp.setBg(this, 'https://i.imgur.com/szYh9qS.jpeg')"></div>
+                                <div class="wp-option" title="Solid" style="background-color:#2c001e" onclick="settingsApp.setBg(this, 'none', '#2c001e')"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. FILES -->
+        <div id="win-files" class="window">
+            <div class="window-header" onmousedown="winManager.startDrag(event, 'win-files')">
+                <span class="window-title">Files</span>
+                <div class="window-controls"><button class="win-btn btn-close" onclick="winManager.close('files')">×</button></div>
+            </div>
+            <div class="files-layout">
+                <div class="files-sidebar">
+                    <div class="files-sidebar-item active">🏠 Home</div>
+                    <div class="files-sidebar-item">📄 Documents</div>
+                    <div class="files-sidebar-item">📥 Downloads</div>
+                </div>
+                <div class="files-main">
+                    <div class="files-grid">
+                        <div class="file-item"><div class="file-icon">📁</div><div class="file-name">Projects</div></div>
+                        <div class="file-item"><div class="file-icon">📄</div><div class="file-name">main.py</div></div>
+                        <div class="file-item"><div class="file-icon">🖼️</div><div class="file-name">photo.jpg</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. TRASH -->
+        <div id="win-trash" class="window">
+            <div class="window-header" onmousedown="winManager.startDrag(event, 'win-trash')">
+                <span class="window-title">Trash</span>
+                <div class="window-controls"><button class="win-btn btn-close" onclick="winManager.close('trash')">×</button></div>
+            </div>
+            <div class="trash-toolbar">
+                <button class="trash-btn" onclick="trashApp.empty()">Empty Trash</button>
+            </div>
+            <div class="files-layout">
+                <div class="files-main">
+                    <div class="files-grid" id="trash-grid">
+                        <div class="file-item"><div class="file-icon">📄</div><div class="file-name">old_draft.txt</div></div>
+                        <div class="file-item"><div class="file-icon">📦</div><div class="file-name">unused.zip</div></div>
+                        <div class="file-item"><div class="file-icon">🚫</div><div class="file-name">error.log</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 5. MONITOR -->
+        <div id="win-monitor" class="window">
+            <div class="window-header" onmousedown="winManager.startDrag(event, 'win-monitor')">
+                <span class="window-title">System Monitor</span>
+                <div class="window-controls"><button class="win-btn btn-close" onclick="winManager.close('monitor')">×</button></div>
+            </div>
+            <div class="monitor-content">
+                <div class="graph-container">
+                    <div class="graph-header"><span>API Latency</span><span id="val-latency" class="graph-value">0 ms</span></div>
+                    <canvas id="canvas-latency"></canvas>
+                </div>
+                <div class="graph-container">
+                    <div class="graph-header"><span>Token Load</span><span id="val-tokens" class="graph-value">0 t/s</span></div>
+                    <canvas id="canvas-tokens"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. EDITOR -->
+        <div id="win-editor" class="window">
+             <div class="window-header" onmousedown="winManager.startDrag(event, 'win-editor')">
+                <span class="window-title">Text Editor</span>
+                <div class="window-controls"><button class="win-btn btn-close" onclick="winManager.close('editor')">×</button></div>
+            </div>
+            <textarea class="editor-textarea" placeholder="Plain text editor..."></textarea>
+        </div>
+
+        <!-- 7. FIREFOX -->
+        <div id="win-firefox" class="window">
+            <div class="window-header" onmousedown="winManager.startDrag(event, 'win-firefox')">
+                <span class="window-title">Mozilla Firefox</span>
+                <div class="window-controls">
+                    <button class="win-btn btn-max" onclick="winManager.toggleMax('win-firefox')">□</button>
+                    <button class="win-btn btn-close" onclick="winManager.close('firefox')">×</button>
+                </div>
+            </div>
+            <div class="fx-toolbar">
+                <button class="fx-btn" title="Back">←</button>
+                <button class="fx-btn" title="Forward">→</button>
+                <button class="fx-btn" title="Reload">↻</button>
+                <div class="fx-url-bar">
+                    <span style="color:#aaa; margin-right:5px;">🔒</span>
+                    <input type="text" class="fx-url-input" value="https://start.ubuntu.com" readonly>
+                </div>
+                <button class="fx-btn" title="Menu">☰</button>
+            </div>
+            <div class="fx-content">
+                <!-- Start Page Mode -->
+                <div class="fx-start-page" id="fx-start">
+                    <div class="fx-logo-area">
+                        <img src="https://i.imgur.com/qD4p9K2.png" width="80" style="margin-bottom:15px; opacity:0.8;">
+                        <h1 style="font-weight:300; margin:0;">Ubuntu Start</h1>
+                    </div>
+                    <div class="fx-search-box">
+                        <span style="font-size:18px; margin-right:10px;">🔍</span>
+                        <input type="text" class="fx-search-input" id="fx-input" placeholder="Search with Gemini..." onkeydown="firefoxApp.handleKey(event)">
+                    </div>
+                    <div style="margin-top:20px; font-size:12px; color:#aaa;">Powered by Google Gemini</div>
+                </div>
+                <!-- Results Mode -->
+                <div class="fx-results" id="fx-results">
+                    <div style="padding-bottom:15px; border-bottom:1px solid #eee; margin-bottom:15px;">
+                        <button style="border:none; background:none; color:#0066cc; cursor:pointer;" onclick="firefoxApp.goHome()">← Back to Start</button>
+                    </div>
+                    <div id="fx-results-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. CODE-OSS -->
+        <div id="win-vscode" class="window">
+            <div class="window-header" onmousedown="winManager.startDrag(event, 'win-vscode')">
+                <span class="window-title">Code - OSS [AI Agent Enabled]</span>
+                <div class="window-controls">
+                    <button class="win-btn btn-max" onclick="winManager.toggleMax('win-vscode')">□</button>
+                    <button class="win-btn btn-close" onclick="winManager.close('vscode')">×</button>
+                </div>
+            </div>
+            <div class="vscode-layout">
+                <!-- Sidebar: Language Selector -->
+                <div class="vscode-activity-bar">
+                    <div class="lang-btn active" onclick="codeApp.setLang('py')" title="Python">PY</div>
+                    <div class="lang-btn" onclick="codeApp.setLang('js')" title="JavaScript">JS</div>
+                    <div class="lang-btn" onclick="codeApp.setLang('cpp')" title="C++">C++</div>
+                    <div class="lang-btn" onclick="codeApp.setLang('html')" title="HTML">HT</div>
+                </div>
+                
+                <div class="vscode-main">
+                    <!-- Tabs & Actions -->
+                    <div class="vscode-tabs">
+                        <div class="vscode-tab" id="code-filename">main.py</div>
+                        <div class="vscode-actions">
+                             <button class="vs-btn vs-btn-save" onclick="codeApp.saveCode()">💾 Save</button>
+                             <button class="vs-btn vs-btn-run" onclick="codeApp.runAgent()">▶ Run</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Editor Area -->
+                    <div class="vscode-editor-container">
+                        <!-- Display Layer (Highlights) -->
+                        <pre id="code-display"><code id="code-content" class="language-python"></code></pre>
+                        <!-- Input Layer (Transparent) -->
+                        <textarea id="code-input" spellcheck="false" oninput="codeApp.updateHighlight()" onscroll="codeApp.syncScroll()"></textarea>
+                    </div>
+
+                    <!-- Internal AI Console -->
+                    <div class="vscode-console">
+                        <div class="console-header">
+                            <span>Gemini Agent Console</span>
+                            <span id="agent-status" style="color:#666">Ready</span>
+                        </div>
+                        <div class="console-output" id="console-output">
+                            <span class="agent-msg">Gemini Agent initialized inside Code-OSS.</span>
+                            <br><span>Select a language, write code, Save, and click Run.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="vscode-statusbar">
+                <span id="status-lang">Python</span>
+                <span id="status-save">Unsaved</span>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /* ===================================================================
+           LOGIC: WINDOW MANAGER
+           =================================================================== */
+        const winManager = {
+            zIndex: 100,
+            isOverview: false,
+            
+            open: function(appId) {
+                if(this.isOverview) this.toggleOverview();
+                const win = document.getElementById(`win-${appId}`);
+                const icon = document.getElementById(`icon-${appId}`);
+                
+                if (win.style.display === 'flex') {
+                    this.focus(appId);
+                    return;
+                }
+                if (!win.dataset.positioned) {
+                    win.style.top = (50 + Math.random()*50) + 'px';
+                    win.style.left = (50 + Math.random()*50) + 'px';
+                    win.dataset.positioned = "true";
+                }
+                win.style.display = 'flex';
+                win.style.zIndex = ++this.zIndex;
+                setTimeout(() => win.classList.add('visible'), 10);
+                
+                if(icon) { icon.classList.add('running'); icon.classList.add('active'); }
+                win.onmousedown = () => this.focus(appId);
+                
+                // Init specific apps
+                if(appId === 'monitor') monitorApp.start();
+                if(appId === 'terminal') document.getElementById('terminalInput').focus();
+                if(appId === 'vscode') codeApp.init();
+                if(appId === 'firefox') document.getElementById('fx-input').focus();
+            },
+            close: function(appId) {
+                const win = document.getElementById(`win-${appId}`);
+                const icon = document.getElementById(`icon-${appId}`);
+                win.classList.remove('visible');
+                setTimeout(() => { win.style.display = 'none'; if(appId === 'monitor') monitorApp.stop(); }, 200);
+                if(icon) { icon.classList.remove('running'); icon.classList.remove('active'); }
+            },
+            focus: function(appId) {
+                const win = document.getElementById(`win-${appId}`);
+                win.style.zIndex = ++this.zIndex;
+                document.querySelectorAll('.app-icon').forEach(el => el.classList.remove('active'));
+                const icon = document.getElementById(`icon-${appId}`);
+                if(icon) icon.classList.add('active');
+            },
+            toggleMax: function(id) { document.getElementById(id).classList.toggle('maximized'); },
+            
+            // Overview Mode
+            toggleOverview: function() {
+                this.isOverview = !this.isOverview;
+                document.body.classList.toggle('overview');
+            },
+            handleOverviewClick: function(e) {
+                if(this.isOverview && (e.target.id === 'desktop-bg' || e.target.classList.contains('window'))) {
+                    this.toggleOverview();
+                    if(e.target.classList.contains('window')) {
+                        const id = e.target.id.replace('win-', '');
+                        this.focus(id);
+                    }
+                }
+            },
+
+            // Dragging
+            startDrag: function(e, winId) {
+                const win = document.getElementById(winId);
+                if(win.classList.contains('maximized')) return;
+                this.isDragging = true; this.dragEl = win; this.focus(winId.replace('win-', ''));
+                const rect = win.getBoundingClientRect();
+                this.dragOffset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+                document.addEventListener('mousemove', this.onDrag);
+                document.addEventListener('mouseup', this.stopDrag);
+            },
+            onDrag: function(e) {
+                if(!this.isDragging) return;
+                this.dragEl.style.left = (e.clientX - this.dragOffset.x) + 'px';
+                this.dragEl.style.top = (e.clientY - this.dragOffset.y) + 'px';
+            },
+            stopDrag: function() {
+                this.isDragging = false;
+                document.removeEventListener('mousemove', this.onDrag);
+                document.removeEventListener('mouseup', this.stopDrag);
+            }
+        };
+        winManager.onDrag = winManager.onDrag.bind(winManager);
+        winManager.stopDrag = winManager.stopDrag.bind(winManager);
+
+        /* ===================================================================
+           LOGIC: UTILS (Notifications)
+           =================================================================== */
+        function showNotification(title, msg) {
+            const container = document.getElementById('notification-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<span class="toast-icon">🔔</span> <div><strong>${title}</strong><br>${msg}</div>`;
+            container.appendChild(toast);
+            
+            // Audio effect simulation (no actual sound for silence, just visual)
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        /* ===================================================================
+           LOGIC: SYSTEM MENU
+           =================================================================== */
+        const systemMenu = {
+            toggle: function() {
+                const menu = document.getElementById('systemMenu');
+                menu.classList.toggle('visible');
+            },
+            
+            // New Brightness Logic
+            setBrightness: function(val) {
+                // val is 0 to 100.
+                // 100 (Right) = 0 opacity
+                // 0 (Left) = 0.75 opacity
+                // Formula: opacity = (100 - val) / 100 * 0.75
+                const opacity = (100 - val) / 100 * 0.75;
+                document.getElementById('brightness-overlay').style.opacity = opacity;
+            },
+
+            // Power Off Simulation
+            powerOff: function() {
+                const overlay = document.getElementById('power-overlay');
+                overlay.classList.add('active'); // Blackout immediately
+                
+                // Hide menu
+                document.getElementById('systemMenu').classList.remove('visible');
+
+                // Wait 5 seconds then restore
+                setTimeout(() => {
+                    overlay.classList.remove('active');
+                }, 5000);
+            }
+        };
+        // Close menu when clicking outside
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('systemMenu');
+            const trigger = document.querySelector('.top-right-group');
+            if (menu.classList.contains('visible') && !menu.contains(e.target) && !trigger.contains(e.target)) {
+                menu.classList.remove('visible');
+            }
+        });
+
+        /* ===================================================================
+           LOGIC: APPS (Firefox & Trash)
+           =================================================================== */
+        
+        const firefoxApp = {
+            handleKey: function(e) {
+                if(e.key === 'Enter') this.search();
+            },
+            goHome: function() {
+                document.getElementById('fx-start').style.display = 'flex';
+                document.getElementById('fx-results').style.display = 'none';
+                document.getElementById('fx-input').value = '';
+                document.getElementById('fx-input').focus();
+            },
+            search: async function() {
+                const query = document.getElementById('fx-input').value.trim();
+                if(!query) return;
+
+                if(!GEMINI_API_KEY) {
+                    showNotification("Firefox", "Connecting to Gemini requires API Key in Settings.");
+                    winManager.open('settings');
+                    return;
+                }
+
+                document.getElementById('fx-start').style.display = 'none';
+                document.getElementById('fx-results').style.display = 'block';
+                const list = document.getElementById('fx-results-list');
+                list.innerHTML = '<div style="padding:20px; text-align:center;">Searching...</div>';
+                
+                try {
+                    const prompt = `Simulate a search engine results page for the query: "${query}". 
+                    Provide 3 distinct search results in JSON format with fields: title, url, description.
+                    Example: [{"title":"Ubuntu", "url":"ubuntu.com", "description":"Linux OS."}]`;
+                    
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                    const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+                    const d = await res.json();
+                    
+                    const text = d.candidates[0].content.parts[0].text;
+                    const jsonStr = text.substring(text.indexOf('['), text.lastIndexOf(']')+1);
+                    const results = JSON.parse(jsonStr);
+
+                    let html = '';
+                    results.forEach(r => {
+                        html += `<div class="fx-result-item">
+                            <div class="fx-result-url">${r.url}</div>
+                            <a class="fx-result-title">${r.title}</a>
+                            <div class="fx-result-desc">${r.description}</div>
+                        </div>`;
+                    });
+                    list.innerHTML = html;
+                    showNotification("Firefox", "Search completed.");
+
+                } catch(e) {
+                    list.innerHTML = '<div style="color:red; padding:20px;">Search Failed. Try again.</div>';
+                }
+            }
+        };
+
+        const trashApp = {
+            empty: function() {
+                const grid = document.getElementById('trash-grid');
+                if(grid.children.length === 0) return;
+                
+                grid.style.transition = 'opacity 0.3s';
+                grid.style.opacity = '0';
+                
+                setTimeout(() => {
+                    grid.innerHTML = '<div style="width:100%; text-align:center; padding:50px; color:#999;">Trash is empty</div>';
+                    grid.style.opacity = '1';
+                    showNotification("Trash", "Rubbish bin emptied.");
+                }, 300);
+            }
+        };
+
+        /* ===================================================================
+           LOGIC: CODE-OSS (AI IDE)
+           =================================================================== */
+        const codeApp = {
+            lang: 'py',
+            isSaved: false,
+            boilerplates: {
+                py: "# Python AI Script\nimport sys\n\ndef main():\n    print('Hello from Code-OSS AI Agent')\n    # Try writing complex logic here\n\nif __name__ == '__main__':\n    main()",
+                js: "// JavaScript AI Script\nconsole.log('Hello from Code-OSS Agent');\n\nfunction calculate(x) {\n    return x * 2;\n}\n\nconsole.log(calculate(10));",
+                cpp: "// C++ AI Script\n#include <iostream>\n\nint main() {\n    std::cout << \"Hello from Code-OSS Agent\" << std::endl;\n    return 0;\n}",
+                html: "<!-- HTML AI Preview -->\n<html>\n<body>\n    <h1>Hello World</h1>\n</body>\n</html>"
+            },
+            init: function() { this.setLang('py'); },
+            setLang: function(lang) {
+                this.lang = lang;
+                document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector(`.lang-btn[onclick*="'${lang}'"]`).classList.add('active');
+                const extMap = { py: 'main.py', js: 'script.js', cpp: 'main.cpp', html: 'index.html' };
+                const nameMap = { py: 'Python', js: 'JavaScript', cpp: 'C++', html: 'HTML' };
+                document.getElementById('code-filename').innerText = extMap[lang];
+                document.getElementById('status-lang').innerText = nameMap[lang];
+                const input = document.getElementById('code-input');
+                input.value = this.boilerplates[lang];
+                this.updateHighlight();
+                this.isSaved = false;
+                this.updateStatus();
+            },
+            saveCode: function() {
+                this.isSaved = true;
+                this.updateStatus();
+                this.logConsole("System: File saved successfully.", "agent-msg");
+                showNotification("Code - OSS", "File saved.");
+            },
+            updateStatus: function() {
+                const stat = document.getElementById('status-save');
+                stat.innerText = this.isSaved ? "Saved" : "Unsaved";
+                stat.style.color = this.isSaved ? "#fff" : "#ccc";
+            },
+            syncScroll: function() {
+                const input = document.getElementById('code-input');
+                const display = document.getElementById('code-display');
+                display.scrollTop = input.scrollTop;
+                display.scrollLeft = input.scrollLeft;
+            },
+            updateHighlight: function() {
+                const input = document.getElementById('code-input').value;
+                const display = document.getElementById('code-content');
+                let html = input.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                const patterns = {
+                    py: [ { regex: /\b(def|class|if|else|elif|import|from|return|print)\b/g, cls: 'hljs-keyword' }, { regex: /"(.*?)"|'(.*?)'/g, cls: 'hljs-string' }, { regex: /#.*/g, cls: 'hljs-comment' }, { regex: /\b\d+\b/g, cls: 'hljs-number' } ],
+                    js: [ { regex: /\b(function|const|let|var|if|else|return|console|log)\b/g, cls: 'hljs-keyword' }, { regex: /"(.*?)"|'(.*?)'|`(.*?)`/g, cls: 'hljs-string' }, { regex: /\/\/.*/g, cls: 'hljs-comment' }, { regex: /\b\d+\b/g, cls: 'hljs-number' } ],
+                    cpp: [ { regex: /\b(int|void|return|if|else|include|std|cout|endl)\b/g, cls: 'hljs-keyword' }, { regex: /"(.*?)"/g, cls: 'hljs-string' }, { regex: /\/\/.*/g, cls: 'hljs-comment' } ],
+                    html: [ { regex: /&lt;\/?[\w\s="']+&gt;/g, cls: 'hljs-keyword' } ]
+                };
+                const rules = patterns[this.lang] || patterns.py;
+                rules.forEach(rule => { html = html.replace(rule.regex, (match) => `<span class="${rule.cls}">${match}</span>`); });
+                display.innerHTML = html;
+                this.isSaved = false;
+                this.updateStatus();
+            },
+            logConsole: function(text, cls) {
+                const con = document.getElementById('console-output');
+                const line = document.createElement('div');
+                line.innerHTML = `<span class="console-prompt">></span> <span class="${cls}">${text}</span>`;
+                con.appendChild(line);
+                con.scrollTop = con.scrollHeight;
+            },
+            runAgent: async function() {
+                if(!GEMINI_API_KEY) { this.logConsole("Error: API Key missing.", "error-msg"); return; }
+                const code = document.getElementById('code-input').value;
+                const status = document.getElementById('agent-status');
+                if(!this.isSaved) this.logConsole("Warning: Running unsaved code.", "error-msg");
+                status.innerText = "Agent Running...";
+                monitorApp.spike(); 
+                this.logConsole("Agent: Analyzing...", "agent-msg");
+                const prompt = `You are a Code Execution Agent. Language: ${this.lang}. Code: ${code}. Task: Execute mentally. Output result only.`;
+                try {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                    const response = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+                    const data = await response.json();
+                    if(data.candidates) {
+                        const result = data.candidates[0].content.parts[0].text;
+                        this.logConsole(result, "user-msg");
+                        status.innerText = "Ready";
+                    } else { this.logConsole("Error", "error-msg"); }
+                } catch(e) { this.logConsole("Network Error", "error-msg"); status.innerText = "Error"; }
+            }
+        };
+
+        /* ===================================================================
+           LOGIC: SETTINGS & MONITOR & TERMINAL
+           =================================================================== */
+        let GEMINI_API_KEY = "";
+        const settingsApp = {
+            nav: function(id) {
+                document.querySelectorAll('.settings-section').forEach(e => e.classList.remove('active'));
+                document.getElementById(`st-sec-${id}`).classList.add('active');
+                document.querySelectorAll('.settings-nav-item').forEach(e => e.classList.remove('active'));
+                event.target.classList.add('active');
+            },
+            setBg: function(el, url, color) {
+                document.querySelectorAll('.wp-option').forEach(e => e.classList.remove('selected'));
+                el.classList.add('selected');
+                const bg = document.getElementById('desktop-bg');
+                if(url && url!=='none') { bg.style.backgroundImage = `url('${url}')`; bg.style.backgroundColor='transparent'; }
+                else { bg.style.backgroundImage = 'none'; bg.style.backgroundColor = color; }
+            },
+            saveKey: function() {
+                const k = document.getElementById('apiKeyInput').value;
+                if(k.length > 5) { 
+                    GEMINI_API_KEY = k; 
+                    document.getElementById('apiKeyStatus').innerText = "Connected";
+                    document.getElementById('apiKeyStatus').style.color="green";
+                    showNotification("Settings", "API Key Saved. Online.");
+                }
+            }
+        };
+
+        const monitorApp = {
+            interval: null,
+            init: function() {
+                 this.c1 = document.getElementById('canvas-latency').getContext('2d');
+                 this.c2 = document.getElementById('canvas-tokens').getContext('2d');
+                 this.d1 = new Array(50).fill(0); this.d2 = new Array(50).fill(0);
+            },
+            start: function() { this.interval = setInterval(() => this.update(), 200); },
+            stop: function() { clearInterval(this.interval); },
+            update: function() {
+                 if(!this.c1) this.init();
+                 this.d1.shift(); this.d1.push(Math.random()*10);
+                 this.d2.shift(); this.d2.push(Math.random()*10);
+                 
+                 // Update Numbers
+                 const latVal = Math.round(this.d1[this.d1.length-1]);
+                 const tokVal = Math.round(this.d2[this.d2.length-1]);
+                 document.getElementById('val-latency').innerText = latVal + " ms";
+                 document.getElementById('val-tokens').innerText = tokVal + " t/s";
+
+                 this.draw(this.c1, this.d1, '#e95420');
+                 this.draw(this.c2, this.d2, '#00ff41');
+            },
+            draw: function(ctx, d, c) {
+                ctx.clearRect(0,0,300,100); ctx.beginPath(); ctx.strokeStyle=c;
+                d.forEach((v,i)=> { i==0?ctx.moveTo(i*6, 100-v):ctx.lineTo(i*6, 100-v)});
+                ctx.stroke();
+            },
+            spike: function() { if(this.d1) { this.d1[49]=100; this.d2[49]=100; } }
+        };
+
+        const terminalApp = {
+            output: document.getElementById('terminalOutput'),
+            input: document.getElementById('terminalInput'),
+            init: function() {
+                this.print("SYSTEM: Ubuntu AI Desktop v4.7", "sys-msg");
+                this.print("INFO: Enhanced Top Bar & System Monitor.", "info-msg");
+                this.input.addEventListener('keydown', (e) => {
+                    if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); this.process(); }
+                });
+            },
+            print: function(txt, cls) {
+                const p = document.createElement('p'); p.className = cls; p.innerText = txt;
+                this.output.appendChild(p); this.output.scrollTop = this.output.scrollHeight;
+            },
+            process: function() {
+                const cmd = this.input.value.trim();
+                if(!cmd) return;
+                this.print(`user@gemini:~$ ${cmd}`, "user-msg");
+                this.input.value = "";
+                
+                const lowerCmd = cmd.toLowerCase();
+
+                // Command Handling
+                if(lowerCmd === '/help') {
+                    this.print("=== SYSTEM COMMANDS ===", "sys-msg");
+                    this.print(" /help        : Show this help menu", "info-msg");
+                    this.print(" /clear       : Clear terminal output", "info-msg");
+                    this.print(" /open [app]  : Open apps (settings, files, monitor, trash)", "info-msg");
+                    this.print(" code-oss     : Launch AI IDE", "info-msg");
+                    this.print(" firefox      : Launch Web Browser", "info-msg");
+                    return;
+                }
+                
+                if(lowerCmd === '/clear') {
+                    this.output.innerHTML = "";
+                    return;
+                }
+
+                if(lowerCmd.startsWith('/open ')) {
+                    const appName = lowerCmd.split(' ')[1];
+                    winManager.open(appName);
+                    return;
+                }
+
+                if(lowerCmd === 'code-oss' || lowerCmd === 'code') {
+                    winManager.open('vscode');
+                    return;
+                }
+
+                if(lowerCmd === 'firefox') {
+                    winManager.open('firefox');
+                    return;
+                }
+
+                // Default to AI
+                this.askAI(cmd);
+            },
+            askAI: async function(q) {
+                if(!GEMINI_API_KEY) { winManager.open('settings'); return; }
+                monitorApp.spike();
+                this.print("AI: Thinking...", "ai-msg");
+                try {
+                     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                     const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{parts:[{text:q}]}]})});
+                     const d = await res.json();
+                     this.print("AI:\n"+d.candidates[0].content.parts[0].text, "ai-msg");
+                } catch(e) { this.print("Error", "err-msg"); }
+            }
+        };
+
+        function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:false}); }
+        setInterval(updateClock, 1000); updateClock();
+        terminalApp.init();
+        setTimeout(() => winManager.open('terminal'), 500);
+
+    </script>
+</body>
+</html>

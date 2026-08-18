@@ -1,0 +1,19 @@
+# Never commit API keys. The Gemini key belongs in the browser's
+# localStorage via Settings > AI Configuration, never in the repo.
+key.txt
+*.key
+.env
+.env.*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.idea/
+.vscode/
+
+# Tooling
+node_modules/
+__pycache__/
+*.pyc

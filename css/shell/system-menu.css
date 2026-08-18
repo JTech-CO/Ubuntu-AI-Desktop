@@ -1,0 +1,744 @@
+/* ------------------------------------------------------------------
+   css/shell/system-menu.css — Yaru quick settings + session chrome
+
+   The panel drops from the status area on the right of the top bar and
+   reuses the `.popover` base declared in css/shell/top-bar.css.
+
+   Owns:  .qs and its BEM children
+          .brightness-overlay  .night-light-overlay  .screen-flash
+          .session-overlay  .lock-screen
+          .dialog--power (the end-session dialog's extra buttons)
+   ------------------------------------------------------------------ */
+
+.qs {
+  top: calc(var(--top-bar-height, 32px) + 5px);
+  right: 8px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  width: min(362px, calc(100vw - 16px));
+  padding: 14px;
+
+  transform-origin: top right;
+
+  visibility: hidden;
+}
+
+.qs.qs--open {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* --- round toggles --------------------------------------------------- */
+
+.qs__toggles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 6px;
+}
+
+.qs-toggle {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+
+  padding: 4px 2px;
+
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.qs-toggle__disc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 46px;
+  height: 46px;
+
+  border-radius: 50%;
+  background: var(--shell-toggle-bg, rgba(255, 255, 255, 0.13));
+  color: inherit;
+
+  transition: background 130ms ease, color 130ms ease;
+}
+
+.qs-toggle:hover .qs-toggle__disc {
+  background: var(--shell-toggle-hover, rgba(255, 255, 255, 0.22));
+}
+
+.qs-toggle--on .qs-toggle__disc {
+  background: var(--accent, #e95420);
+  color: #ffffff;
+}
+
+.qs-toggle--on:hover .qs-toggle__disc {
+  background: color-mix(in srgb, var(--accent, #e95420) 86%, #ffffff);
+}
+
+.qs-toggle__label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+
+  max-width: 100%;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 11.5px;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.qs-toggle__chevron {
+  position: absolute;
+  top: 28px;
+  right: calc(50% - 27px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 18px;
+  height: 18px;
+
+  border-radius: 50%;
+  background: var(--shell-popover-bg, rgba(51, 51, 51, 0.96));
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.qs-toggle:focus-visible {
+  outline: 2px solid var(--accent, #e95420);
+  outline-offset: -1px;
+}
+
+.qs-toggle[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* --- Wi-Fi network list ---------------------------------------------- */
+
+.qs__networks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  max-height: 216px;
+  overflow-y: auto;
+  padding: 6px;
+
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.qs__networks-title {
+  padding: 2px 6px 5px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.qs-network {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 7px 9px;
+
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+
+  transition: background 110ms ease;
+}
+
+.qs-network:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.qs-network__icon,
+.qs-network__lock {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.qs-network__lock {
+  opacity: 0.55;
+}
+
+.qs-network__lock svg {
+  width: 13px;
+  height: 13px;
+}
+
+.qs-network__name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qs-network__state {
+  flex: 0 0 auto;
+  color: var(--accent, #e95420);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.qs-network--active .qs-network__name {
+  font-weight: 700;
+}
+
+/* --- sliders ---------------------------------------------------------- */
+
+.qs-slider {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 2px;
+}
+
+.qs-slider__icon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.qs-slider__range {
+  -webkit-appearance: none;
+  appearance: none;
+
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 20px;
+  margin: 0;
+
+  background: transparent;
+  cursor: pointer;
+}
+
+.qs-slider__range:focus-visible {
+  outline: 2px solid var(--accent, #e95420);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+.qs-slider__range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      to right,
+      var(--accent, #e95420) var(--fill, 50%),
+      rgba(255, 255, 255, 0.22) var(--fill, 50%)
+    );
+}
+
+.qs-slider__range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.qs-slider__range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.qs-slider__range::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--accent, #e95420);
+}
+
+.qs-slider__range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+/* --- user row --------------------------------------------------------- */
+
+.qs-user {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  padding: 8px 9px;
+
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  transition: background 110ms ease;
+}
+
+.qs-user:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.qs-user__avatar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+
+  width: 34px;
+  height: 34px;
+
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.qs-user__names {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.qs-user__name {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qs-user__login {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qs-user__battery {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.qs-user__percent {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- footer ----------------------------------------------------------- */
+
+.qs__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-top: 11px;
+  border-top: 1px solid var(--shell-popover-border, rgba(255, 255, 255, 0.09));
+}
+
+.qs-footer-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 38px;
+  height: 38px;
+  padding: 0;
+
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  transition: background 110ms ease;
+}
+
+.qs-footer-btn__disc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qs-footer-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.qs-footer-btn:focus-visible {
+  outline: 2px solid var(--accent, #e95420);
+  outline-offset: -2px;
+}
+
+/* ==================================================================
+   end-session dialog (extends css/shell/dialog.css)
+   ================================================================== */
+
+.dialog--power {
+  width: min(430px, 100%);
+}
+
+.dialog--power .dialog__button {
+  padding-right: 6px;
+  padding-left: 6px;
+  font-size: 13px;
+}
+
+/* ==================================================================
+   screen overlays
+   ================================================================== */
+
+.brightness-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-brightness, 1500);
+
+  background: #000000;
+  opacity: 0;
+  pointer-events: none;
+
+  transition: opacity 140ms linear;
+}
+
+.night-light-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-night-light, 1490);
+
+  background: rgba(255, 158, 66, 0.15);
+  opacity: 0;
+  pointer-events: none;
+
+  transition: opacity 500ms ease;
+}
+
+.screen-flash {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-flash, 1600);
+
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+
+  transition: opacity 300ms ease-out;
+}
+
+.screen-flash--on {
+  opacity: 0.9;
+  transition-duration: 40ms;
+}
+
+/* ==================================================================
+   power off / restart / suspend
+   ================================================================== */
+
+.session-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-session, 1400);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #000000;
+  color: #ffffff;
+  font-family: var(--font-ui, Ubuntu, 'Ubuntu Sans', system-ui, sans-serif);
+
+  opacity: 0;
+  transition: opacity 520ms ease;
+}
+
+.session-overlay--in {
+  opacity: 1;
+}
+
+.session-overlay:focus {
+  outline: none;
+}
+
+.session-overlay__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+.session-overlay .ubuntu-logo {
+  color: var(--ubuntu-orange, #e95420);
+}
+
+.session-overlay__spinner {
+  width: 32px;
+  height: 32px;
+
+  border: 3px solid rgba(255, 255, 255, 0.16);
+  border-top-color: var(--ubuntu-orange, #e95420);
+  border-radius: 50%;
+
+  animation: session-spin 900ms linear infinite;
+}
+
+@keyframes session-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.session-overlay__status {
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+.session-overlay__prompt {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14.5px;
+  letter-spacing: 0.03em;
+  animation: session-blink 1.6s ease-in-out infinite;
+}
+
+.session-overlay__hint {
+  color: rgba(255, 255, 255, 0.22);
+  font-size: 13px;
+  letter-spacing: 0.03em;
+}
+
+@keyframes session-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ==================================================================
+   lock screen
+   ================================================================== */
+
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-lock, 1300);
+
+  overflow: hidden;
+
+  color: #ffffff;
+  font-family: var(--font-ui, Ubuntu, 'Ubuntu Sans', system-ui, sans-serif);
+
+  opacity: 0;
+  transition: opacity 320ms ease;
+}
+
+.lock-screen--in {
+  opacity: 1;
+}
+
+.lock-screen--out {
+  opacity: 0;
+  transition-duration: 400ms;
+}
+
+.lock-screen:focus {
+  outline: none;
+}
+
+.lock-screen__wallpaper {
+  position: absolute;
+  inset: -40px;
+
+  background:
+    var(--wallpaper, linear-gradient(160deg, #2c001e 0%, #77216f 48%, #e95420 130%))
+    center / cover no-repeat;
+  filter: blur(24px) brightness(0.45) saturate(1.1);
+  transform: scale(1.08);
+}
+
+.lock-screen__shield,
+.lock-screen__auth {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.lock-screen__shield {
+  gap: 2px;
+  cursor: pointer;
+  transition:
+    transform 420ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 300ms ease;
+}
+
+.lock-screen__clock {
+  font-size: clamp(56px, 11vw, 104px);
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.4);
+}
+
+.lock-screen__date {
+  margin-top: 6px;
+  font-size: clamp(15px, 2.2vw, 21px);
+  opacity: 0.85;
+}
+
+.lock-screen__hint {
+  margin-top: 28px;
+  font-size: 13px;
+  opacity: 0.45;
+}
+
+.lock-screen--lifted .lock-screen__shield {
+  transform: translateY(-30vh) scale(0.62);
+  opacity: 0.85;
+}
+
+.lock-screen--lifted .lock-screen__hint {
+  opacity: 0;
+}
+
+.lock-screen__auth {
+  gap: 12px;
+
+  opacity: 0;
+  transform: translateY(26px);
+  pointer-events: none;
+  transition:
+    opacity 300ms ease 120ms,
+    transform 380ms cubic-bezier(0.22, 0.61, 0.36, 1) 100ms;
+}
+
+.lock-screen--lifted .lock-screen__auth {
+  opacity: 1;
+  transform: translateY(6vh);
+  pointer-events: auto;
+}
+
+.lock-screen__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 84px;
+  height: 84px;
+
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.lock-screen__user {
+  font-size: 19px;
+  font-weight: 500;
+}
+
+.lock-screen__field {
+  margin-top: 2px;
+}
+
+.lock-screen__entry {
+  box-sizing: border-box;
+  width: 268px;
+  padding: 9px 16px;
+
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.13);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: #ffffff;
+
+  font-family: inherit;
+  font-size: 14px;
+  text-align: center;
+}
+
+.lock-screen__entry::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.lock-screen__entry:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.lock-screen__error {
+  min-height: 17px;
+  color: #ff9c86;
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.lock-screen__auth--shake {
+  animation: lock-shake 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes lock-shake {
+  10%, 90% { transform: translate(-2px, 6vh); }
+  20%, 80% { transform: translate(4px, 6vh); }
+  30%, 50%, 70% { transform: translate(-7px, 6vh); }
+  40%, 60% { transform: translate(7px, 6vh); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-overlay,
+  .lock-screen,
+  .lock-screen__shield,
+  .lock-screen__auth,
+  .qs-toggle__disc,
+  .brightness-overlay,
+  .night-light-overlay {
+    transition: none;
+  }
+
+  .session-overlay__spinner,
+  .session-overlay__prompt,
+  .lock-screen__auth--shake {
+    animation: none;
+  }
+}

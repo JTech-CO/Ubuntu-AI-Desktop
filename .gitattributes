@@ -1,0 +1,19 @@
+# Normalise line endings so the repository always stores LF, regardless of the
+# platform a contributor works on. Without this, editing on Windows produces
+# whole-file diffs that hide the real change.
+* text=auto eol=lf
+
+# Binary assets must never be touched by EOL conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+
+# Keep the original single-file builds out of language statistics and diffs —
+# they are kept for reference, not maintained.
+legacy/** linguist-vendored

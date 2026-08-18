@@ -1,0 +1,549 @@
+/* ===========================================================================
+   imageviewer.css — Image Viewer (Eye of GNOME)
+
+   GNOME 46 eog: a flat header bar over a dark image canvas with a thin status
+   bar underneath. The canvas keeps its dark surface in both themes, because
+   that is what eog does — a photo is judged against neutral grey, not against
+   the desktop's paper white.
+   =========================================================================== */
+
+.eog-window {
+  /* --- light --- */
+  --eog-header-bg: #ffffff;
+  --eog-header-line: rgba(0, 0, 0, 0.12);
+  --eog-fg: rgba(0, 0, 0, 0.86);
+  --eog-fg-dim: rgba(0, 0, 0, 0.55);
+  --eog-hover: rgba(0, 0, 0, 0.07);
+  --eog-active: rgba(0, 0, 0, 0.13);
+
+  --eog-status-bg: #f2f1f0;
+  --eog-status-fg: rgba(0, 0, 0, 0.62);
+
+  /* The canvas is deliberately theme-independent. */
+  --eog-canvas: #2b2b2b;
+  --eog-canvas-fg: rgba(255, 255, 255, 0.88);
+  --eog-canvas-dim: rgba(255, 255, 255, 0.55);
+
+  --eog-accent: var(--accent, #e95420);
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+:root[data-theme='dark'] .eog-window {
+  --eog-header-bg: #303030;
+  --eog-header-line: rgba(255, 255, 255, 0.12);
+  --eog-fg: rgba(255, 255, 255, 0.92);
+  --eog-fg-dim: rgba(255, 255, 255, 0.6);
+  --eog-hover: rgba(255, 255, 255, 0.09);
+  --eog-active: rgba(255, 255, 255, 0.16);
+
+  --eog-status-bg: #2a2a2a;
+  --eog-status-fg: rgba(255, 255, 255, 0.62);
+
+  --eog-canvas: #1c1c1c;
+}
+
+.eog-root {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--eog-canvas);
+  outline: none;
+}
+
+/* ---------------------------------------------------------------------------
+   header bar
+   --------------------------------------------------------------------------- */
+
+.eog-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  height: 44px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  background: var(--eog-header-bg);
+  border-bottom: 1px solid var(--eog-header-line);
+  color: var(--eog-fg);
+  user-select: none;
+}
+
+.eog-header__start,
+.eog-header__end {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.eog-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.eog-title__name {
+  max-width: 100%;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eog-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eog-title__sub {
+  max-width: 100%;
+  font-size: 11px;
+  color: var(--eog-fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eog-title__sub[hidden] {
+  display: none;
+}
+
+.eog-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md, 6px);
+  background: transparent;
+  color: var(--eog-fg);
+  cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+
+.eog-btn:hover:not(:disabled) {
+  background: var(--eog-hover);
+}
+
+.eog-btn:active:not(:disabled) {
+  background: var(--eog-active);
+}
+
+.eog-btn:focus-visible {
+  outline: 2px solid var(--eog-accent);
+  outline-offset: -2px;
+}
+
+.eog-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+/* GTK linked buttons: one rounded pill with a hairline between the halves. */
+.eog-linked {
+  display: inline-flex;
+  border: 1px solid var(--eog-header-line);
+  border-radius: var(--radius-md, 6px);
+  overflow: hidden;
+}
+
+.eog-linked .eog-btn {
+  border-radius: 0;
+}
+
+.eog-linked .eog-btn + .eog-btn {
+  border-left: 1px solid var(--eog-header-line);
+}
+
+/* ---------------------------------------------------------------------------
+   image canvas
+   --------------------------------------------------------------------------- */
+
+.eog-view {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background:
+    /* The GIMP-style checkerboard behind transparent images. */
+    repeating-conic-gradient(rgba(255, 255, 255, 0.045) 0% 25%, transparent 0% 50%) 50% / 24px 24px,
+    var(--eog-canvas);
+  outline: none;
+  touch-action: none;
+}
+
+.eog-view--pannable {
+  cursor: grab;
+}
+
+.eog-view--dragging {
+  cursor: grabbing;
+}
+
+.eog-stage {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.eog-image {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: 0;
+  /* surface.js starts every transform with translate(-50%, -50%), which parks
+     the element's centre on the view's centre — so its tx/ty are screen px. */
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+  /* The element is laid out at the image's natural size and then scaled by the
+     transform; reset.css's blanket `max-width: 100%` would clamp that layout
+     box and squash the picture, so it is cancelled here. */
+  max-width: none;
+  max-height: none;
+  image-rendering: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+  opacity: 0;
+  transition: opacity var(--dur-med, 200ms) var(--ease-out, ease);
+}
+
+.eog-view--loaded .eog-image {
+  opacity: 1;
+}
+
+/* Above ~4x, show the actual pixels rather than a blurred interpolation. */
+.eog-view--pixelated .eog-image {
+  image-rendering: pixelated;
+}
+
+/* ---------------------------------------------------------------------------
+   empty / error state
+   --------------------------------------------------------------------------- */
+
+.eog-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px;
+  box-sizing: border-box;
+  text-align: center;
+  color: var(--eog-canvas-fg);
+  background: var(--eog-canvas);
+}
+
+.eog-empty[hidden] {
+  display: none;
+}
+
+.eog-empty__icon {
+  color: var(--eog-canvas-dim);
+  opacity: 0.7;
+}
+
+.eog-empty__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.eog-empty__body {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--eog-canvas-dim);
+}
+
+.eog-empty__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.eog-empty__button {
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md, 6px);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--eog-canvas-fg);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.eog-empty__button:hover {
+  background: rgba(255, 255, 255, 0.17);
+}
+
+.eog-empty__button:focus-visible {
+  outline: 2px solid var(--eog-accent);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   status bar
+   --------------------------------------------------------------------------- */
+
+.eog-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  background: var(--eog-status-bg);
+  border-top: 1px solid var(--eog-header-line);
+  color: var(--eog-status-fg);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  user-select: none;
+}
+
+.eog-status__group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.eog-status__cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eog-status__cell:empty {
+  display: none;
+}
+
+.eog-status__cell--zoom {
+  font-variant-numeric: tabular-nums;
+}
+
+.eog-status__cell--position {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   fullscreen and slideshow
+
+   The content is promoted to a fixed full-viewport layer rather than the
+   browser's fullscreen top layer, so the context menu, the dialogs and the
+   notifications stay visible over it. index.js also asks the browser to make
+   <html> fullscreen, which hides the browser chrome without stranding those
+   overlays.
+   --------------------------------------------------------------------------- */
+
+.eog-root--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overview, 1300);
+  background: #000000;
+}
+
+.eog-root--fullscreen .eog-header,
+.eog-root--fullscreen .eog-status {
+  display: none;
+}
+
+.eog-root--fullscreen .eog-view {
+  background: #000000;
+}
+
+.eog-root--slideshow {
+  cursor: none;
+}
+
+/* A window whose content went fullscreen must not paint its own chrome. */
+.window--eog-fullscreen {
+  visibility: hidden;
+}
+
+.window--eog-fullscreen .window__content,
+.window--eog-fullscreen .eog-root--fullscreen {
+  visibility: visible;
+}
+
+/* ---------------------------------------------------------------------------
+   properties dialog
+   --------------------------------------------------------------------------- */
+
+.eog-props-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog, 1500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+
+.eog-props-backdrop.is-in {
+  opacity: 1;
+}
+
+.eog-props {
+  width: min(460px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-xl, 12px);
+  background: var(--bg-0, #ffffff);
+  color: var(--fg, #2e2e2e);
+  box-shadow: var(--shadow-4, 0 16px 48px rgba(0, 0, 0, 0.34));
+  transform: scale(0.96);
+  transition: transform var(--dur-fast, 120ms) var(--ease-out, ease);
+  outline: none;
+  overflow: hidden;
+}
+
+.eog-props-backdrop.is-in .eog-props {
+  transform: scale(1);
+}
+
+.eog-props__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  height: 44px;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+}
+
+.eog-props__heading {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.eog-props__close {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.eog-props__close:hover {
+  background: var(--fill, rgba(0, 0, 0, 0.06));
+}
+
+.eog-props__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 16px;
+  overflow: auto;
+}
+
+.eog-props__row {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  font-size: 13px;
+}
+
+.eog-props__row:last-child {
+  border-bottom: 0;
+}
+
+.eog-props__key {
+  flex: 0 0 108px;
+  color: var(--fg-2, #5e5c64);
+}
+
+.eog-props__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.eog-props__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  padding: 10px 16px 14px;
+}
+
+.eog-props__done {
+  padding: 6px 16px;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: var(--radius-md, 6px);
+  background: var(--bg-2, #f0f0ef);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.eog-props__done:hover {
+  background: var(--bg-3, #e4e4e2);
+}
+
+.eog-props__done:focus-visible {
+  outline: 2px solid var(--accent, #e95420);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Files integration — the real thumbnail this app's images get in the grid
+   --------------------------------------------------------------------------- */
+
+.files-image-thumb {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 3px;
+  background:
+    repeating-conic-gradient(rgba(0, 0, 0, 0.06) 0% 25%, transparent 0% 50%) 50% / 12px 12px,
+    #ffffff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.16),
+    0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+.files-image-thumb__img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eog-image,
+  .eog-props,
+  .eog-props-backdrop {
+    transition: none;
+  }
+}

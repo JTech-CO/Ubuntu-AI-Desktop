@@ -1,0 +1,297 @@
+/* ------------------------------------------------------------------
+   css/shell/notifications.css — GNOME 46 notification banners
+
+   Ubuntu ships the dark Yaru shell theme, so shell chrome (top bar,
+   popovers, notification banners) stays dark in both light and dark
+   app styles. Banners drop down from under the top bar, centred, and
+   stack downwards. The close button only appears on hover, exactly as
+   GNOME Shell does it.
+
+   Owns:  .notify-layer  .notification and its BEM children
+   ------------------------------------------------------------------ */
+
+.notify-layer {
+  position: fixed;
+  top: calc(var(--top-bar-height, 32px) + 6px);
+  left: 50%;
+  z-index: var(--z-notification, 900);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+
+  width: min(420px, calc(100vw - 32px));
+  margin: 0;
+  padding: 0;
+  transform: translateX(-50%);
+
+  /* The layer itself must never swallow desktop clicks. */
+  pointer-events: none;
+}
+
+.notification {
+  pointer-events: auto;
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
+
+  background: var(--shell-popover-bg, rgba(51, 51, 51, 0.93));
+  -webkit-backdrop-filter: blur(28px) saturate(1.3);
+  backdrop-filter: blur(28px) saturate(1.3);
+
+  border: 1px solid var(--shell-popover-border, rgba(255, 255, 255, 0.09));
+  border-radius: 12px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    0 8px 28px rgba(0, 0, 0, 0.42);
+
+  color: var(--shell-fg, #ffffff);
+  font-family: var(--font-ui, Ubuntu, 'Ubuntu Sans', system-ui, sans-serif);
+
+  /* Entry state — .notification--in is added on the next frame. */
+  opacity: 0;
+  transform: translateY(-16px) scale(0.97);
+  transition:
+    opacity 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.notification--in {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.notification--out {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.98);
+  transition:
+    opacity 180ms ease-in,
+    transform 180ms ease-in;
+}
+
+.notification--clickable .notification__main {
+  cursor: pointer;
+}
+
+.notification--clickable .notification__main:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* --- body row ---------------------------------------------------- */
+
+.notification__main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  transition: background 120ms ease;
+}
+
+.notification__icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--shell-fg, #ffffff);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.notification__icon--empty {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+}
+
+.notification__icon svg,
+.notification__icon img {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.notification__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.notification__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 1px;
+}
+
+.notification__app {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.notification__time {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.notification__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.notification__body {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12.5px;
+  line-height: 1.42;
+
+  /* GNOME clamps the banner body to two lines. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* --- close button (revealed on hover) ---------------------------- */
+
+.notification__close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+
+  opacity: 0;
+  transform: scale(0.85);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease,
+    background 120ms ease;
+}
+
+.notification:hover .notification__close,
+.notification:focus-within .notification__close {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.notification__close:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.notification__close:active {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.notification__close:focus-visible {
+  opacity: 1;
+  transform: scale(1);
+  outline: 2px solid var(--accent, #e95420);
+  outline-offset: 1px;
+}
+
+/* --- action row --------------------------------------------------- */
+
+.notification__actions {
+  display: flex;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.notification__action {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 9px 12px;
+
+  border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+  background: transparent;
+  color: #ffffff;
+
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.notification__action:first-child {
+  border-left: 0;
+}
+
+.notification__action:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.notification__action:active {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.notification__action:focus-visible {
+  outline: 2px solid var(--accent, #e95420);
+  outline-offset: -2px;
+}
+
+/* --- narrow screens ---------------------------------------------- */
+
+@media (max-width: 520px) {
+  .notify-layer {
+    width: calc(100vw - 20px);
+  }
+
+  .notification__body {
+    -webkit-line-clamp: 3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification,
+  .notification--out,
+  .notification__close {
+    transition: none;
+  }
+
+  .notification {
+    opacity: 1;
+    transform: none;
+  }
+
+  .notification--out {
+    opacity: 0;
+  }
+}

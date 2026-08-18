@@ -1,0 +1,201 @@
+/* ===========================================================================
+   keyboard-capture.css — the keyboard-lock indicator, prompt and OSD.
+   Owns .kbd-osd, .kbd-prompt and the top bar's power / capture controls.
+   =========================================================================== */
+
+/* --- On-screen hint --------------------------------------------------------
+   A transient banner under the top bar, in the shell's dark palette rather
+   than the app palette, because it is chrome and not content. */
+.kbd-osd {
+  position: fixed;
+  top: calc(var(--top-bar-height) + var(--sp-4));
+  left: 50%;
+  transform: translate(-50%, -12px);
+  z-index: var(--z-notify, 1400);
+
+  max-width: min(560px, calc(100vw - 2 * var(--sp-6)));
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(28, 28, 28, 0.96);
+  color: #fff;
+  box-shadow: var(--shadow-4);
+  backdrop-filter: blur(12px);
+
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--dur-med) var(--ease-out),
+    transform var(--dur-med) var(--ease-out);
+}
+
+.kbd-osd.is-shown {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.kbd-osd__title {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-md);
+  margin-bottom: var(--sp-1);
+}
+
+.kbd-osd__body {
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.78);
+  white-space: pre-line;
+}
+
+/* --- First-run prompt ------------------------------------------------------
+   Shown once, until the user either enables capture or dismisses it. It has to
+   be a real click target: fullscreen cannot be requested without a gesture. */
+.kbd-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: var(--sp-6);
+  transform: translate(-50%, 16px);
+  z-index: var(--z-notify, 1400);
+
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  max-width: min(680px, calc(100vw - 2 * var(--sp-6)));
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-5);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(28, 28, 28, 0.97);
+  color: #fff;
+  box-shadow: var(--shadow-4);
+  backdrop-filter: blur(12px);
+
+  opacity: 0;
+  transition:
+    opacity var(--dur-med) var(--ease-out),
+    transform var(--dur-med) var(--ease-out);
+}
+
+.kbd-prompt.is-shown {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.kbd-prompt__icon {
+  flex: none;
+  color: var(--ubuntu-orange);
+}
+
+.kbd-prompt__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.kbd-prompt__text b {
+  font-weight: var(--weight-bold);
+}
+
+.kbd-prompt__actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.kbd-prompt__button {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.kbd-prompt__button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.kbd-prompt__button--primary {
+  background: var(--ubuntu-orange);
+  color: #fff;
+}
+
+.kbd-prompt__button--primary:hover {
+  /* Plain hex first for browsers without color-mix(); the second declaration
+     wins where it is supported and tracks a themed accent. */
+  background: #ed6a3d;
+  background: color-mix(in srgb, var(--ubuntu-orange) 88%, #fff);
+}
+
+/* --- Top bar: power button + capture indicator -----------------------------
+   The power button sits at the very left of the panel. GNOME puts shutdown in
+   the top-right system menu, which this desktop also has; this extra control
+   exists because the emulator additionally needs an always-visible, one-click
+   way to end the session and hand the keyboard back. */
+.top-bar__power {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 100%;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.82);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.top-bar__power:hover {
+  background: rgba(233, 84, 32, 0.85);
+  color: #fff;
+}
+
+.top-bar__power:active {
+  background: var(--ubuntu-orange);
+}
+
+.top-bar__capture {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 var(--sp-2);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: var(--text-xs);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.top-bar__capture:hover {
+  background: var(--shell-panel-hover);
+  color: #fff;
+}
+
+/* Locked: the state that matters, so it gets the accent. */
+.top-bar__capture.is-active {
+  color: var(--ubuntu-orange);
+}
+
+.top-bar__capture.is-active:hover {
+  color: #fff;
+}
+
+/* Unsupported browsers get a dimmed, non-actionable control rather than a
+   button that would always fail. */
+.top-bar__capture.is-unsupported {
+  color: rgba(255, 255, 255, 0.3);
+  cursor: help;
+}
+
+.top-bar__capture-label {
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .top-bar__capture-label {
+    display: none;
+  }
+}

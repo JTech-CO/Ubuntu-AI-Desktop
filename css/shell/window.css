@@ -1,0 +1,525 @@
+/* ------------------------------------------------------------------
+   css/shell/window.css — Yaru / GNOME 46 window chrome
+
+   Windows are built at runtime by js/shell/window-chrome.js, so this file
+   is the only place their geometry and colour live. Every value is either a
+   token from css/base/tokens.css or a local `--wm-*` alias, so the light,
+   dark and per-app chrome variants differ only by the token block they set.
+
+   The 1px window outline is drawn with box-shadow rather than `border`, so
+   the inline width/height written by the window manager always matches the
+   rectangle the user sees, and so the eight resize handles that hang a few
+   pixels outside the frame are never clipped.
+
+   Owns:  .window-layer  .window (+ BEM children and state modifiers)
+          .snap-preview  html.wm-dragging
+   ------------------------------------------------------------------ */
+
+.window-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-window, 100);
+
+  /* The layer must never swallow clicks aimed at the desktop. */
+  pointer-events: none;
+}
+
+/* ==================================================================
+   1. Frame
+   ================================================================== */
+
+.window {
+  /* --- light chrome (Yaru light headerbar) --- */
+  --wm-header-h: var(--win-header-height, 38px);
+  --wm-radius: var(--win-radius, 12px);
+
+  --wm-bg: var(--win-bg, #ffffff);
+  --wm-fg: var(--win-fg, #1d1d1d);
+  --wm-outline: var(--win-outline, rgba(0, 0, 0, 0.16));
+
+  --wm-header-bg: var(--win-header-bg, #fafafa);
+  --wm-header-bg-blur: var(--win-header-bg-blur, #f2f1f0);
+  --wm-header-line: var(--win-header-line, rgba(0, 0, 0, 0.12));
+  --wm-title: var(--win-title, rgba(0, 0, 0, 0.86));
+  --wm-title-blur: var(--win-title-blur, rgba(0, 0, 0, 0.42));
+
+  --wm-button-fg: var(--win-button-fg, rgba(0, 0, 0, 0.74));
+  --wm-button-hover: var(--win-button-hover, rgba(0, 0, 0, 0.08));
+  --wm-button-active: var(--win-button-active, rgba(0, 0, 0, 0.16));
+
+  --wm-shadow-focus:
+    0 0 0 1px var(--wm-outline),
+    0 4px 10px rgba(0, 0, 0, 0.2),
+    0 18px 52px rgba(0, 0, 0, 0.42);
+  --wm-shadow-blur:
+    0 0 0 1px var(--wm-outline),
+    0 2px 6px rgba(0, 0, 0, 0.13),
+    0 8px 24px rgba(0, 0, 0, 0.22);
+
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+
+  color: var(--wm-fg);
+  font-family: var(--font-ui, Ubuntu, 'Ubuntu Sans', system-ui, sans-serif);
+  box-shadow: var(--wm-shadow-blur);
+
+  transform-origin: 50% 50%;
+  transition:
+    left 160ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    top 160ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 160ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    height 160ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 140ms ease;
+}
+
+.window:focus {
+  outline: none;
+}
+
+.window--focused {
+  box-shadow: var(--wm-shadow-focus);
+}
+
+/* --- dark chrome: Terminal, Code-OSS, Firefox, and every window while
+       the shell is in dark style ------------------------------------ */
+
+.window--dark,
+:root[data-theme='dark'] .window {
+  --wm-bg: var(--win-bg-dark, #242424);
+  --wm-fg: var(--win-fg-dark, #ffffff);
+  --wm-outline: var(--win-outline-dark, rgba(0, 0, 0, 0.7));
+
+  --wm-header-bg: var(--win-header-bg-dark, #303030);
+  --wm-header-bg-blur: var(--win-header-bg-blur-dark, #2a2a2a);
+  --wm-header-line: var(--win-header-line-dark, rgba(0, 0, 0, 0.55));
+  --wm-title: var(--win-title-dark, #ffffff);
+  --wm-title-blur: var(--win-title-blur-dark, rgba(255, 255, 255, 0.45));
+
+  --wm-button-fg: var(--win-button-fg-dark, rgba(255, 255, 255, 0.86));
+  --wm-button-hover: var(--win-button-hover-dark, rgba(255, 255, 255, 0.11));
+  --wm-button-active: var(--win-button-active-dark, rgba(255, 255, 255, 0.2));
+
+  --wm-shadow-focus:
+    0 0 0 1px var(--wm-outline),
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 20px 56px rgba(0, 0, 0, 0.6);
+  --wm-shadow-blur:
+    0 0 0 1px var(--wm-outline),
+    0 2px 6px rgba(0, 0, 0, 0.3),
+    0 10px 28px rgba(0, 0, 0, 0.4);
+}
+
+/* ==================================================================
+   2. Header bar
+   ================================================================== */
+
+.window__header {
+  position: relative;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  height: var(--wm-header-h);
+  min-height: var(--wm-header-h);
+  padding: 0;
+
+  background: var(--wm-header-bg-blur);
+  border-radius: var(--wm-radius) var(--wm-radius) 0 0;
+  box-shadow: inset 0 -1px 0 var(--wm-header-line);
+
+  cursor: default;
+  touch-action: none;
+  user-select: none;
+  transition: background 140ms ease;
+}
+
+.window--focused .window__header {
+  background: var(--wm-header-bg);
+}
+
+.window__title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  margin: 0 auto;
+
+  /* Reserve the control cluster on both sides so the title stays optically
+     centred and truncates before it can collide with the buttons. */
+  padding: 0 124px;
+
+  color: var(--wm-title-blur);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: var(--wm-header-h);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  pointer-events: none;
+  transition: color 140ms ease;
+}
+
+.window--focused .window__title {
+  color: var(--wm-title);
+}
+
+/* --- controls: minimize, maximize, close (GNOME order, right side) --- */
+
+.window__controls {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding-right: 3px;
+}
+
+.window__button {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* 38px hit area, 24px visible circle. */
+  width: var(--wm-header-h);
+  height: var(--wm-header-h);
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  background: transparent;
+  color: var(--wm-button-fg);
+  font-family: inherit;
+  cursor: default;
+}
+
+.window__button-face {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+
+  transition:
+    background 110ms ease,
+    color 110ms ease;
+}
+
+.window__button:hover .window__button-face {
+  background: var(--wm-button-hover);
+}
+
+.window__button:active .window__button-face {
+  background: var(--wm-button-active);
+}
+
+.window__button:focus-visible {
+  outline: none;
+}
+
+.window__button:focus-visible .window__button-face {
+  outline: 2px solid var(--accent, #e95420);
+  outline-offset: 1px;
+}
+
+.window__button--close:hover .window__button-face,
+.window__button--close:focus-visible .window__button-face {
+  background: var(--accent, #e95420);
+  color: #ffffff;
+}
+
+.window__button--close:active .window__button-face {
+  background: color-mix(in srgb, var(--accent, #e95420) 82%, #000000);
+  color: #ffffff;
+}
+
+.window__icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+/* ==================================================================
+   3. Content
+   ================================================================== */
+
+.window__content {
+  position: relative;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+
+  background: var(--wm-bg);
+  border-radius: 0 0 var(--wm-radius) var(--wm-radius);
+  overflow: hidden;
+}
+
+.window__content--error {
+  display: block;
+  padding: 24px;
+  color: var(--destructive, #c01c28);
+  font-size: 13.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* ==================================================================
+   4. Resize handles
+   ================================================================== */
+
+.window__handle {
+  position: absolute;
+  box-sizing: border-box;
+  touch-action: none;
+}
+
+.window__handle--n,
+.window__handle--s {
+  left: 14px;
+  right: 14px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.window__handle--n {
+  top: -4px;
+}
+
+.window__handle--s {
+  bottom: -4px;
+}
+
+.window__handle--e,
+.window__handle--w {
+  top: 14px;
+  bottom: 14px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.window__handle--w {
+  left: -4px;
+}
+
+.window__handle--e {
+  right: -4px;
+}
+
+.window__handle--nw,
+.window__handle--ne,
+.window__handle--sw,
+.window__handle--se {
+  width: 18px;
+  height: 18px;
+}
+
+.window__handle--nw {
+  top: -4px;
+  left: -4px;
+  cursor: nwse-resize;
+}
+
+.window__handle--ne {
+  top: -4px;
+  right: -4px;
+  cursor: nesw-resize;
+}
+
+.window__handle--sw {
+  bottom: -4px;
+  left: -4px;
+  cursor: nesw-resize;
+}
+
+.window__handle--se {
+  bottom: -4px;
+  right: -4px;
+  cursor: nwse-resize;
+}
+
+/* Maximized and fixed-size windows cannot be resized by their edges. */
+.window--maximized .window__handle,
+.window--fixed-size .window__handle {
+  display: none;
+}
+
+/* ==================================================================
+   5. States
+   ================================================================== */
+
+.window--dragging,
+.window--resizing {
+  transition: box-shadow 140ms ease;
+}
+
+.window--dragging .window__header {
+  cursor: grabbing;
+}
+
+.window--maximized {
+  box-shadow: none;
+}
+
+.window--maximized .window__header {
+  border-radius: 0;
+}
+
+.window--maximized .window__content {
+  border-radius: 0;
+}
+
+/* A half-tiled window sits flush against the bottom of the work area, so its
+   lower corners square off the way mutter draws them. */
+.window--tiled .window__content {
+  border-radius: 0;
+}
+
+.window--hidden {
+  display: none;
+}
+
+html.wm-dragging,
+html.wm-dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* ==================================================================
+   6. Snap preview
+   ================================================================== */
+
+.snap-preview {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+
+  border: 2px solid color-mix(in srgb, var(--accent, #e95420) 75%, transparent);
+  border-radius: var(--win-radius, 12px);
+  background: color-mix(in srgb, var(--accent, #e95420) 20%, transparent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14) inset;
+
+  opacity: 0;
+  transition:
+    opacity 120ms ease,
+    left 140ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    top 140ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 140ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    height 140ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.snap-preview--visible {
+  opacity: 1;
+}
+
+/* ==================================================================
+   7. Animations
+   ================================================================== */
+
+@keyframes window-open {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes window-close {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes window-minimize {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform:
+      translate(var(--wm-fly-x, 0px), var(--wm-fly-y, 0px))
+      scale(var(--wm-fly-scale, 0.1));
+  }
+}
+
+@keyframes window-restore {
+  from {
+    opacity: 0;
+    transform:
+      translate(var(--wm-fly-x, 0px), var(--wm-fly-y, 0px))
+      scale(var(--wm-fly-scale, 0.1));
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+.window--opening {
+  animation: window-open 200ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.window--closing {
+  pointer-events: none;
+  animation: window-close 140ms ease-in both;
+}
+
+.window--minimizing {
+  pointer-events: none;
+  animation: window-minimize 210ms cubic-bezier(0.4, 0, 0.6, 1) both;
+}
+
+.window--restoring {
+  animation: window-restore 220ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* ==================================================================
+   8. Reduced motion
+   ================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .window,
+  .window__header,
+  .window__title,
+  .window__button-face,
+  .snap-preview {
+    transition: none;
+  }
+
+  .window--opening,
+  .window--restoring {
+    animation: none;
+  }
+
+  .window--closing,
+  .window--minimizing {
+    animation: window-close 1ms linear both;
+  }
+}

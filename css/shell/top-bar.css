@@ -1,0 +1,605 @@
+/* ------------------------------------------------------------------
+   css/shell/top-bar.css — GNOME 46 top bar + calendar popover
+
+   Ubuntu ships the dark Yaru shell theme, so the bar and its popovers
+   stay dark in both the light and dark app styles. The bar is 32px
+   tall, near-black at 0.85 alpha with a backdrop blur, and lays out in
+   three regions: Activities on the left, the clock dead centre, the
+   status area on the right.
+
+   Owns:  .top-bar and its BEM children
+          .popover (shared popover base)
+          .calendar-popover  .calendar__*  .notices__*  .notice
+          .gnome-switch
+   ------------------------------------------------------------------ */
+
+:root {
+  /* Consumed by window-chrome.js and css/shell/notifications.css. */
+  --top-bar-height: 32px;
+}
+
+.top-bar {
+  --tb-bg: var(--shell-panel-bg, rgba(0, 0, 0, 0.85));
+  --tb-fg: var(--shell-fg, #ffffff);
+  --tb-hover: var(--shell-panel-hover, rgba(255, 255, 255, 0.11));
+  --tb-active: var(--shell-panel-active, rgba(255, 255, 255, 0.2));
+
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: var(--z-top-bar, 800);
+
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+
+  box-sizing: border-box;
+  height: var(--top-bar-height);
+  padding: 0 4px;
+
+  background: var(--tb-bg);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.2);
+
+  color: var(--tb-fg);
+  font-family: var(--font-ui, Ubuntu, 'Ubuntu Sans', system-ui, sans-serif);
+  font-size: 12.5px;
+  line-height: 1;
+  user-select: none;
+}
+
+.top-bar__left {
+  display: flex;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.top-bar__center {
+  display: flex;
+  justify-content: center;
+}
+
+.top-bar__right {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+/* --- buttons ------------------------------------------------------- */
+
+.top-bar__button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  height: 24px;
+  margin: 0;
+  padding: 0 9px;
+
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+
+  transition: background 110ms ease;
+}
+
+.top-bar__button:hover {
+  background: var(--tb-hover);
+}
+
+.top-bar__button:active,
+.top-bar__button--active {
+  background: var(--tb-active);
+}
+
+.top-bar__button:focus-visible {
+  outline: 2px solid var(--accent, #e95420);
+  outline-offset: -2px;
+}
+
+.top-bar--overview .top-bar__activities {
+  background: var(--tb-active);
+}
+
+/* --- clock --------------------------------------------------------- */
+
+.top-bar__clock {
+  position: relative;
+  gap: 9px;
+}
+
+.top-bar__date,
+.top-bar__time {
+  font-variant-numeric: tabular-nums;
+}
+
+.top-bar__unread {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent, #e95420);
+}
+
+.top-bar__unread[hidden] {
+  display: none;
+}
+
+/* --- status area --------------------------------------------------- */
+
+.top-bar__status-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.top-bar__status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+.top-bar__status-icon svg {
+  display: block;
+}
+
+.top-bar__status-icon--dnd {
+  opacity: 0.75;
+}
+
+.top-bar__chevron {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 1px;
+  opacity: 0.72;
+}
+
+/* ==================================================================
+   shared popover base — also used by css/shell/system-menu.css
+   ================================================================== */
+
+.popover {
+  position: fixed;
+  z-index: var(--z-popover, 850);
+
+  box-sizing: border-box;
+  background: var(--shell-popover-bg, rgba(51, 51, 51, 0.93));
+  -webkit-backdrop-filter: blur(30px) saturate(1.3);
+  backdrop-filter: blur(30px) saturate(1.3);
+
+  border: 1px solid var(--shell-popover-border, rgba(255, 255, 255, 0.09));
+  border-radius: 12px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 12px 40px rgba(0, 0, 0, 0.48);
+
+  color: var(--shell-fg, #ffffff);
+  font-family: var(--font-ui, Ubuntu, 'Ubuntu Sans', system-ui, sans-serif);
+  font-size: 13px;
+
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
+  transform-origin: top center;
+  transition:
+    opacity 170ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 190ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.popover.popover--open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ==================================================================
+   calendar + notification popover
+   ================================================================== */
+
+.calendar-popover {
+  top: calc(var(--top-bar-height) + 5px);
+  left: 50%;
+  margin-left: calc(-1 * min(320px, 46vw));
+
+  display: flex;
+  gap: 0;
+  width: min(640px, calc(100vw - 24px));
+  padding: 10px;
+}
+
+.calendar-popover.popover--open {
+  transform: translateY(0) scale(1);
+}
+
+.calendar-popover__notifications {
+  display: flex;
+  flex: 1 1 52%;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 10px 4px 4px;
+  border-right: 1px solid var(--shell-popover-border, rgba(255, 255, 255, 0.09));
+}
+
+.calendar-popover__calendar {
+  flex: 0 0 auto;
+  width: 274px;
+  padding: 4px 4px 4px 12px;
+}
+
+/* --- notifications column ------------------------------------------ */
+
+.notices__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 2px 0;
+}
+
+.notices__title {
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.notices__count {
+  flex: 1 1 auto;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.notices__count:empty {
+  min-width: 0;
+}
+
+.notices__clear {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 110ms ease;
+}
+
+.notices__clear:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.notices__clear:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.notices__list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+
+  min-height: 120px;
+  max-height: 302px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.notice {
+  position: relative;
+  padding: 8px 30px 9px 11px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.notice__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11.5px;
+}
+
+.notice__app {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice__time {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.notice__title {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.notice__body {
+  margin-top: 1px;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 12.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.notice__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.notice__action {
+  flex: 1 1 0;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.notice__action:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.notice__close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 20px;
+  height: 20px;
+  padding: 0;
+
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+
+  opacity: 0;
+  transition: opacity 110ms ease, background 110ms ease;
+}
+
+.notice:hover .notice__close,
+.notice__close:focus-visible {
+  opacity: 1;
+}
+
+.notice__close:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.notice-empty {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 26px 0;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.notice-empty__text {
+  font-size: 13px;
+}
+
+/* --- do not disturb ------------------------------------------------- */
+
+.notices__dnd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 2px 2px;
+  border-top: 1px solid var(--shell-popover-border, rgba(255, 255, 255, 0.09));
+}
+
+.notices__dnd-label {
+  font-size: 13px;
+}
+
+.gnome-switch {
+  position: relative;
+  flex: 0 0 auto;
+
+  width: 44px;
+  height: 24px;
+  padding: 0;
+
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+
+  transition: background 140ms ease;
+}
+
+.gnome-switch__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+
+  width: 18px;
+  height: 18px;
+
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+
+  transition: transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.gnome-switch--on {
+  background: var(--accent, #e95420);
+}
+
+.gnome-switch--on .gnome-switch__knob {
+  transform: translateX(20px);
+}
+
+.gnome-switch:focus-visible {
+  outline: 2px solid var(--accent, #e95420);
+  outline-offset: 2px;
+}
+
+/* --- calendar column ------------------------------------------------ */
+
+.calendar__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.calendar__month {
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.calendar__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 26px;
+  height: 26px;
+  padding: 0;
+
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  transition: background 110ms ease;
+}
+
+.calendar__nav:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calendar__weekday {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 24px;
+
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.calendar__day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 32px;
+  padding: 0;
+
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+
+  font-family: inherit;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+
+  transition: background 100ms ease;
+}
+
+.calendar__day:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.calendar__day--outside {
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.calendar__day--selected {
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.calendar__day--today {
+  background: var(--accent, #e95420);
+  border-color: transparent;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.calendar__day--today:hover {
+  background: color-mix(in srgb, var(--accent, #e95420) 84%, #ffffff);
+}
+
+.calendar__day:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: -2px;
+}
+
+/* --- narrow screens -------------------------------------------------- */
+
+@media (max-width: 660px) {
+  .calendar-popover {
+    left: 12px;
+    margin-left: 0;
+    flex-direction: column;
+    width: calc(100vw - 24px);
+  }
+
+  .calendar-popover__notifications {
+    border-right: 0;
+    border-bottom: 1px solid var(--shell-popover-border, rgba(255, 255, 255, 0.09));
+    padding-right: 4px;
+  }
+
+  .calendar-popover__calendar {
+    width: auto;
+    padding-left: 4px;
+  }
+
+  .notices__list {
+    max-height: 180px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover,
+  .gnome-switch__knob,
+  .top-bar__button {
+    transition: none;
+  }
+
+  .popover {
+    transform: none;
+  }
+}

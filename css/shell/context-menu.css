@@ -1,0 +1,219 @@
+/* ------------------------------------------------------------------
+   css/shell/context-menu.css — Adwaita popover menus
+
+   Matches libadwaita's GtkPopoverMenu: a 12px-radius card with 6px of
+   padding, 32px rows with 6px radius, a 16px leading icon column, a
+   dimmed trailing accelerator column, and hairline separators.
+
+   The `--dark` modifier switches to the GNOME Shell palette — the dock
+   and other shell chrome use it so their menus match the panel.
+
+   Owns:  .ctx-menu  .ctx-item  .ctx-sep  .ctx-header
+   ------------------------------------------------------------------ */
+
+.ctx-menu {
+  --ctx-bg: var(--menu-bg, #ffffff);
+  --ctx-fg: var(--menu-fg, #1d1d1d);
+  --ctx-dim: var(--menu-fg-dim, rgba(0, 0, 0, 0.55));
+  --ctx-hover: var(--menu-hover, rgba(0, 0, 0, 0.07));
+  --ctx-active: var(--menu-active, rgba(0, 0, 0, 0.13));
+  --ctx-line: var(--menu-separator, rgba(0, 0, 0, 0.1));
+  --ctx-border: var(--menu-border, rgba(0, 0, 0, 0.08));
+
+  position: fixed;
+  z-index: var(--z-context-menu, 950);
+
+  box-sizing: border-box;
+  min-width: 180px;
+  max-width: 380px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  padding: 6px;
+
+  border: 1px solid var(--ctx-border);
+  border-radius: 12px;
+  background: var(--ctx-bg);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.14),
+    0 8px 30px rgba(0, 0, 0, 0.24);
+
+  color: var(--ctx-fg);
+  font-family: var(--font-ui, Ubuntu, 'Ubuntu Sans', system-ui, sans-serif);
+  font-size: 13.5px;
+  user-select: none;
+
+  opacity: 0;
+  transform: scale(0.97);
+  transform-origin: top left;
+  transition:
+    opacity 110ms ease-out,
+    transform 130ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.ctx-menu--in {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.ctx-menu--out {
+  opacity: 0;
+  transform: scale(0.98);
+  transition-duration: 100ms;
+}
+
+.ctx-menu:focus {
+  outline: none;
+}
+
+/* --- items ---------------------------------------------------------- */
+
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 32px;
+  padding: 5px 9px;
+
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.3;
+  text-align: left;
+  cursor: default;
+
+  transition: background 90ms ease;
+}
+
+.ctx-item:hover:not(:disabled),
+.ctx-item:focus:not(:disabled) {
+  background: var(--ctx-hover);
+  outline: none;
+}
+
+.ctx-item:active:not(:disabled) {
+  background: var(--ctx-active);
+}
+
+.ctx-item:disabled {
+  color: var(--ctx-dim);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.ctx-item__icon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.ctx-item__icon > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ctx-item__icon:empty {
+  width: 16px;
+}
+
+.ctx-item__label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ctx-item__accel {
+  flex: 0 0 auto;
+  padding-left: 16px;
+  color: var(--ctx-dim);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.ctx-item__accel:empty {
+  display: none;
+}
+
+.ctx-item__arrow {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding-left: 10px;
+  color: var(--ctx-dim);
+}
+
+/* --- separators and headers ------------------------------------------ */
+
+.ctx-sep {
+  height: 1px;
+  margin: 5px 6px;
+  background: var(--ctx-line);
+}
+
+.ctx-header {
+  padding: 6px 9px 4px;
+  color: var(--ctx-dim);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* --- dark variants ---------------------------------------------------- */
+
+.ctx-menu--dark {
+  --ctx-bg: var(--shell-popover-bg, rgba(51, 51, 51, 0.96));
+  --ctx-fg: var(--shell-fg, #ffffff);
+  --ctx-dim: rgba(255, 255, 255, 0.58);
+  --ctx-hover: rgba(255, 255, 255, 0.11);
+  --ctx-active: rgba(255, 255, 255, 0.19);
+  --ctx-line: rgba(255, 255, 255, 0.11);
+  --ctx-border: var(--shell-popover-border, rgba(255, 255, 255, 0.09));
+
+  -webkit-backdrop-filter: blur(28px) saturate(1.3);
+  backdrop-filter: blur(28px) saturate(1.3);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.34),
+    0 10px 34px rgba(0, 0, 0, 0.46);
+}
+
+:root[data-theme='dark'] .ctx-menu:not(.ctx-menu--dark) {
+  --ctx-bg: var(--menu-bg-dark, #383838);
+  --ctx-fg: var(--menu-fg-dark, #ffffff);
+  --ctx-dim: rgba(255, 255, 255, 0.6);
+  --ctx-hover: rgba(255, 255, 255, 0.1);
+  --ctx-active: rgba(255, 255, 255, 0.18);
+  --ctx-line: rgba(255, 255, 255, 0.11);
+  --ctx-border: rgba(255, 255, 255, 0.1);
+
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.4),
+    0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ctx-menu,
+  .ctx-item {
+    transition: none;
+  }
+
+  .ctx-menu {
+    transform: none;
+  }
+}

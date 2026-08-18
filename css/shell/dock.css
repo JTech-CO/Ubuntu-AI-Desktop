@@ -1,0 +1,374 @@
+/* ------------------------------------------------------------------
+   css/shell/dock.css — the Ubuntu dock (Dash to Dock)
+
+   Yaru geometry: a 72px translucent panel with a backdrop blur holding
+   48px icons. Running apps get up to three small dots on the panel's
+   inner edge; the focused app gets the accent bar instead. Trash sits
+   at the bottom with a count badge, and Show Applications below it.
+
+   Owns:  .dock and its BEM children
+   ------------------------------------------------------------------ */
+
+:root {
+  --dock-width: 72px;
+  --dock-icon-size: 48px;
+}
+
+.dock {
+  --dk-bg: var(--shell-dock-bg, rgba(28, 23, 26, 0.62));
+  --dk-line: var(--shell-dock-line, rgba(255, 255, 255, 0.07));
+  --dk-fg: var(--shell-fg, #ffffff);
+  --dk-hover: var(--shell-dock-hover, rgba(255, 255, 255, 0.11));
+  --dk-active: var(--shell-dock-active, rgba(255, 255, 255, 0.19));
+  --dk-item: calc(var(--dock-icon-size) + 8px);
+
+  position: fixed;
+  z-index: var(--z-dock, 700);
+
+  box-sizing: border-box;
+  background: var(--dk-bg);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  backdrop-filter: blur(22px) saturate(1.25);
+
+  color: var(--dk-fg);
+  font-family: var(--font-ui, Ubuntu, 'Ubuntu Sans', system-ui, sans-serif);
+  user-select: none;
+
+  transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* --- placement ------------------------------------------------------ */
+
+.dock[data-position='left'] {
+  top: var(--top-bar-height, 32px);
+  bottom: 0;
+  left: 0;
+  width: var(--dock-width);
+  border-right: 1px solid var(--dk-line);
+}
+
+.dock[data-position='bottom'] {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--dock-width);
+  border-top: 1px solid var(--dk-line);
+}
+
+.dock__inner {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  gap: 4px;
+  overflow: visible;
+}
+
+.dock[data-position='left'] .dock__inner {
+  flex-direction: column;
+  padding: 8px 0;
+}
+
+.dock[data-position='bottom'] .dock__inner {
+  flex-direction: row;
+  padding: 0 8px;
+}
+
+.dock__apps,
+.dock__pinned {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dock[data-position='left'] .dock__apps,
+.dock[data-position='left'] .dock__pinned {
+  flex-direction: column;
+}
+
+.dock[data-position='bottom'] .dock__apps,
+.dock[data-position='bottom'] .dock__pinned {
+  flex-direction: row;
+}
+
+.dock__spacer {
+  flex: 1 1 auto;
+}
+
+.dock__separator {
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.dock[data-position='left'] .dock__separator {
+  width: 60%;
+  height: 1px;
+  margin: 3px 0;
+}
+
+.dock[data-position='bottom'] .dock__separator {
+  width: 1px;
+  height: 60%;
+  margin: 0 3px;
+}
+
+/* --- items ---------------------------------------------------------- */
+
+.dock__item {
+  position: relative;
+
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+  width: var(--dk-item);
+  height: var(--dk-item);
+  padding: 0;
+
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+.dock__item:hover {
+  background: var(--dk-hover);
+}
+
+.dock__item:active {
+  transform: scale(0.93);
+}
+
+.dock__item--active {
+  background: var(--dk-active);
+}
+
+.dock__item:focus-visible {
+  outline: 2px solid var(--accent, #e95420);
+  outline-offset: -2px;
+}
+
+.dock__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--dock-icon-size);
+  height: var(--dock-icon-size);
+  pointer-events: none;
+}
+
+.dock__icon > svg,
+.dock__icon > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.dock__icon-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  height: 100%;
+
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.14);
+
+  font-size: calc(var(--dock-icon-size) * 0.44);
+  font-weight: 700;
+}
+
+/* --- running indicator --------------------------------------------- */
+
+.dock__dots {
+  position: absolute;
+  display: flex;
+  gap: 3px;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.dock__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.dock__bar {
+  position: absolute;
+  border-radius: 2px;
+  background: var(--accent, #e95420);
+  pointer-events: none;
+  transition: width 150ms ease, height 150ms ease, opacity 120ms ease;
+}
+
+.dock[data-position='left'] .dock__dots {
+  top: 50%;
+  left: 3px;
+  flex-direction: column;
+  transform: translateY(-50%);
+}
+
+.dock[data-position='left'] .dock__bar {
+  top: 50%;
+  left: 2px;
+  width: 3px;
+  height: 0;
+  transform: translateY(-50%);
+}
+
+.dock[data-position='left'] .dock__item--active .dock__bar {
+  height: 22px;
+}
+
+.dock[data-position='bottom'] .dock__dots {
+  bottom: 3px;
+  left: 50%;
+  flex-direction: row;
+  transform: translateX(-50%);
+}
+
+.dock[data-position='bottom'] .dock__bar {
+  bottom: 2px;
+  left: 50%;
+  width: 0;
+  height: 3px;
+  transform: translateX(-50%);
+}
+
+.dock[data-position='bottom'] .dock__item--active .dock__bar {
+  width: 22px;
+}
+
+.dock__item--active .dock__dots {
+  opacity: 0;
+}
+
+/* --- trash badge ---------------------------------------------------- */
+
+.dock__badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+
+  border: 2px solid var(--shell-dock-badge-ring, #2b2225);
+  border-radius: 999px;
+  background: var(--accent, #e95420);
+
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.dock__badge[hidden] {
+  display: none;
+}
+
+/* --- tooltip -------------------------------------------------------- */
+
+.dock__tooltip {
+  position: absolute;
+  z-index: 2;
+
+  padding: 5px 10px;
+
+  border: 1px solid var(--shell-popover-border, rgba(255, 255, 255, 0.09));
+  border-radius: 7px;
+  background: var(--shell-popover-bg, rgba(51, 51, 51, 0.95));
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+
+  color: var(--dk-fg);
+  font-size: 12.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease 60ms, transform 120ms ease 60ms;
+}
+
+.dock[data-position='left'] .dock__tooltip {
+  top: 50%;
+  left: calc(100% + 6px);
+  transform: translate(-4px, -50%);
+}
+
+.dock[data-position='bottom'] .dock__tooltip {
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translate(-50%, 4px);
+}
+
+.dock__item:hover .dock__tooltip,
+.dock__item:focus-visible .dock__tooltip {
+  opacity: 1;
+}
+
+.dock[data-position='left'] .dock__item:hover .dock__tooltip,
+.dock[data-position='left'] .dock__item:focus-visible .dock__tooltip {
+  transform: translate(0, -50%);
+}
+
+.dock[data-position='bottom'] .dock__item:hover .dock__tooltip,
+.dock[data-position='bottom'] .dock__item:focus-visible .dock__tooltip {
+  transform: translate(-50%, 0);
+}
+
+/* --- autohide ------------------------------------------------------- */
+
+.dock--autohide[data-position='left'] {
+  transform: translateX(calc(-1 * var(--dock-width)));
+}
+
+.dock--autohide[data-position='bottom'] {
+  transform: translateY(var(--dock-width));
+}
+
+.dock--autohide.dock--revealed {
+  transform: none;
+  box-shadow: 0 0 28px rgba(0, 0, 0, 0.4);
+}
+
+/* --- narrow screens -------------------------------------------------- */
+
+@media (max-width: 520px) {
+  .dock[data-position='left'] {
+    --dock-icon-size: 36px;
+    --dock-width: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock,
+  .dock__item,
+  .dock__tooltip,
+  .dock__bar,
+  .dock__dots {
+    transition: none;
+  }
+}
