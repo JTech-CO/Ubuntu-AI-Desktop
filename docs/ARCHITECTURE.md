@@ -644,6 +644,14 @@ returns `{changed, deleted, dirs}` for the writable roots, which the page applie
 worker answers only those URLs and caches nothing; without it, piped stdin still works
 and `input()` explains what is missing.
 
+### Tests
+
+`tests/*.test.mjs` run with `node --test` and no dependencies. `tests/helpers/harness.mjs`
+shims `window`, `document`, `localStorage`, `screen` and `matchMedia`, registers the real
+command table and returns `sh(line, answers)` → `{ code, stdout, stderr, screen, prompts }`
+for a live session. New commands should come with cases there; behaviour copied from a
+real tool belongs in a fixture checked by `tests/differential.mjs` against that tool.
+
 ### Required command coverage
 
 - **files**: `ls cd pwd mkdir rmdir rm cp mv touch ln cat tac head tail wc find tree du df stat file chmod chown realpath basename dirname`

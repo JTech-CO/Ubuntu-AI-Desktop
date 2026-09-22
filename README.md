@@ -6,6 +6,7 @@
 ![No build step](https://img.shields.io/badge/build-none-772953?style=flat-square)
 ![Vanilla ES modules](https://img.shields.io/badge/js-vanilla%20ES%20modules-2C001E?style=flat-square)
 ![Commands](https://img.shields.io/badge/shell-214%20commands-26A269?style=flat-square)
+[![tests](https://github.com/JTech-CO/Ubuntu-AI-Desktop/actions/workflows/tests.yml/badge.svg)](https://github.com/JTech-CO/Ubuntu-AI-Desktop/actions/workflows/tests.yml)
 
 [![Ubuntu AI Desktop](assets/og-image.png)](https://jtech-co.github.io/Ubuntu-AI-Desktop/)
 
@@ -109,6 +110,8 @@ js/shell/               window manager, top bar, dock, overview, keybindings
 js/apps/<id>/           one folder per application
 js/apps/registry.js     the application catalogue
 js/main.js              boot sequence
+tests/                  node --test suites, fixtures, and the real-tool comparison
+package.json            only the test scripts — there are no dependencies
 legacy/                 the original single-file versions, kept for reference
 ```
 
@@ -473,6 +476,40 @@ export default [
 `ctx` carries `argv`, `raw`, `stdin`, `stdoutIsTTY`, `env`, `fs`, `procs`,
 `users`, `gemini`, `term`, `signal` and a `run()` helper for invoking the shell
 recursively. Long-running commands must watch `ctx.signal` so `Ctrl+C` works.
+
+---
+
+## Tests
+
+```bash
+node --test "tests/*.test.mjs"
+```
+
+(or `npm test`). Node 22 or newer, nothing to install. The suites load the
+desktop's own modules under Node with a few browser globals shimmed, open a
+real shell session and type command lines into it, so what they check is what
+you would see at the prompt:
+
+| Suite | What it pins down |
+| --- | --- |
+| `shell.test.mjs` | expansion, pipes, redirection, here-documents, comments, running by path, command-not-found text, `env`/`expr`/`xargs`/`clear`, `python3` options |
+| `fs.test.mjs` | text and binary files, modes and times, links, trash, errno errors, snapshot/restore |
+| `awk.test.mjs` | 93 programs whose expected output was taken from GNU awk, plus mawk's error texts |
+| `jq.test.mjs` | the jq 1.7 manual's examples, jq's exact error and parse messages, the command and its install gate |
+| `archive.test.mjs` | gzip/tar/zip round trips, corruption detection, and the commands' GNU/Info-ZIP behaviour |
+
+```bash
+node tests/differential.mjs
+```
+
+compares the emulator with whatever real programs are installed — the awk
+fixtures through the system's awk (mawk first), the jq cases through `jq`, and
+archives both ways through `tar`, `gzip` and `unzip` — and exits non-zero on a
+difference that is not documented. GitHub Actions runs both on Ubuntu 24.04 for
+every push; there the references are the actual mawk 1.3.4 and jq 1.7.1.
+
+`python3` needs a browser (a Web Worker and the network), so it is verified in
+the browser rather than under Node; only its option handling is in the suite.
 
 ---
 

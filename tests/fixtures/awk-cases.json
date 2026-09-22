@@ -1,0 +1,478 @@
+[
+  {
+    "program": "{print $1}",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "alice\nbob\ncarol\ndave\n"
+  },
+  {
+    "program": "{print $NF}",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "NY\nLA\nNY\nSF\n"
+  },
+  {
+    "program": "{print NF}",
+    "stdin": "a b c\n\nx\n",
+    "expect": "3\n0\n1\n"
+  },
+  {
+    "program": "NR==2",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "bob 25 LA\n"
+  },
+  {
+    "program": "NR%2==0 {print NR\": \"$0}",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "2: bob 25 LA\n4: dave 25 SF\n"
+  },
+  {
+    "program": "/NY/",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "alice 30 NY\ncarol 35 NY\n"
+  },
+  {
+    "program": "$2 > 26 {print $1}",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "alice\ncarol\n"
+  },
+  {
+    "program": "{s+=$2} END{print s, s/NR}",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "115 28.75\n"
+  },
+  {
+    "program": "!seen[$3]++ {print $3}",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "NY\nLA\nSF\n"
+  },
+  {
+    "program": "{a[$3]++} END{n=0; for(k in a) n++; print n}",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "3\n"
+  },
+  {
+    "program": "{print length($1)}",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "5\n3\n5\n4\n"
+  },
+  {
+    "program": "length > 10",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "alice 30 NY\ncarol 35 NY\n"
+  },
+  {
+    "program": "BEGIN{FS=\",\"} NR>1 {print $2, $3*2}",
+    "stdin": "id,name,score\n1,Ann,90.5\n2,Ben,78\n3,Cho,88.25\n",
+    "expect": "Ann 181\nBen 156\nCho 176.5\n"
+  },
+  {
+    "program": "BEGIN{FS=\",\"; OFS=\"|\"} {$1=$1; print}",
+    "stdin": "id,name,score\n1,Ann,90.5\n2,Ben,78\n3,Cho,88.25\n",
+    "expect": "id|name|score\n1|Ann|90.5\n2|Ben|78\n3|Cho|88.25\n"
+  },
+  {
+    "program": "{$2=\"\"; print}",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "alice  NY\nbob  LA\ncarol  NY\ndave  SF\n"
+  },
+  {
+    "program": "{$5=\"X\"; print; print NF}",
+    "stdin": "a b c\n",
+    "expect": "a b c  X\n5\n"
+  },
+  {
+    "program": "{NF=2; print}",
+    "stdin": "a b c d\n",
+    "expect": "a b\n"
+  },
+  {
+    "program": "{gsub(/a/,\"A\"); print}",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "Alice 30 NY\nbob 25 LA\ncArol 35 NY\ndAve 25 SF\n"
+  },
+  {
+    "program": "{sub(/[0-9]+/,\"<&>\"); print}",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "alice <30> NY\nbob <25> LA\ncarol <35> NY\ndave <25> SF\n"
+  },
+  {
+    "program": "{n=gsub(/o/,\"0\",$1); print n, $1}",
+    "stdin": "foo boo\n",
+    "expect": "2 f00\n"
+  },
+  {
+    "program": "BEGIN{s=\"hello\"; gsub(/x*/,\"-\",s); print s}",
+    "stdin": "",
+    "expect": "-h-e-l-l-o-\n"
+  },
+  {
+    "program": "BEGIN{s=\"abc\"; gsub(/b*/,\"-\",s); print s}",
+    "stdin": "",
+    "expect": "-a-c-\n"
+  },
+  {
+    "program": "BEGIN{s=\"a.b.c\"; n=split(s, p, \".\"); print n, p[1], p[3]}",
+    "stdin": "",
+    "expect": "3 a c\n"
+  },
+  {
+    "program": "BEGIN{n=split(\"a1b22c\", p, /[0-9]+/); print n, p[1] p[2] p[3]}",
+    "stdin": "",
+    "expect": "3 abc\n"
+  },
+  {
+    "program": "BEGIN{print substr(\"hello\",2,3), substr(\"hello\",0), substr(\"hello\",-1,3), substr(\"hello\",4)}",
+    "stdin": "",
+    "expect": "ell hello hel lo\n"
+  },
+  {
+    "program": "BEGIN{print substr(\"hello\", 1.5, 2.3), substr(\"hello\", 2.5, 2), substr(\"hello\", 0, 3)}",
+    "stdin": "",
+    "expect": "he el hel\n"
+  },
+  {
+    "program": "BEGIN{print index(\"hello\",\"ll\"), index(\"hello\",\"z\")}",
+    "stdin": "",
+    "expect": "3 0\n"
+  },
+  {
+    "program": "BEGIN{print match(\"foobar\", /o+/), RSTART, RLENGTH}",
+    "stdin": "",
+    "expect": "2 2 2\n"
+  },
+  {
+    "program": "BEGIN{print toupper(\"abc\"), tolower(\"ABC\")}",
+    "stdin": "",
+    "expect": "ABC abc\n"
+  },
+  {
+    "program": "BEGIN{printf \"%5.2f|%-5s|%05d|%x|%o|%e|%c\\n\", 3.14159, \"ab\", 42, 255, 8, 12345.678, 65}",
+    "stdin": "",
+    "expect": " 3.14|ab   |00042|ff|10|1.234568e+04|A\n"
+  },
+  {
+    "program": "BEGIN{printf \"%.0f %.0f %.0f %.2f\\n\", 0.5, 1.5, 2.5, 0.125}",
+    "stdin": "",
+    "expect": "0 2 2 0.12\n"
+  },
+  {
+    "program": "BEGIN{printf \"%g %g %g %g %G\\n\", 100000, 1000000, 0.0001, 0.00001, 1e-10}",
+    "stdin": "",
+    "expect": "100000 1e+06 0.0001 1e-05 1E-10\n"
+  },
+  {
+    "program": "BEGIN{printf \"%10.3e|%-10d|%+d|% d\\n\", 1234.5, 7, 5, 5}",
+    "stdin": "",
+    "expect": " 1.234e+03|7         |+5| 5\n"
+  },
+  {
+    "program": "BEGIN{printf \"%s %s\\n\", \"a\", \"b\"}",
+    "stdin": "",
+    "expect": "a b\n"
+  },
+  {
+    "program": "BEGIN{printf \"%*d|%-*d|%.*f\\n\", 5, 42, 4, 7, 2, 3.14159}",
+    "stdin": "",
+    "expect": "   42|7   |3.14\n"
+  },
+  {
+    "program": "BEGIN{x = sprintf(\"%03d-%s\", 7, \"z\"); print x}",
+    "stdin": "",
+    "expect": "007-z\n"
+  },
+  {
+    "program": "BEGIN{print 1/3, 2^10, 2^0.5, -2^2, 2^3^2, 7%3, -7%3}",
+    "stdin": "",
+    "expect": "0.333333 1024 1.41421 -4 512 1 -1\n"
+  },
+  {
+    "program": "BEGIN{print 1e6, 1e-5, 123456789012, 0.1+0.2, 100/3}",
+    "stdin": "",
+    "expect": "1000000 1e-05 123456789012 0.3 33.3333\n"
+  },
+  {
+    "program": "BEGIN{CONVFMT=\"%.2g\"; x=3.14159; y=x \"\"; print y; OFMT=\"%.3f\"; print x}",
+    "stdin": "",
+    "expect": "3.1\n3.142\n"
+  },
+  {
+    "program": "BEGIN{print \"3abc\"+0, \" 12 \"+0, \"1e3\"+0, \".5\"+0, \"x\"+0, -\"3\", \"0x1A\"+0}",
+    "stdin": "",
+    "expect": "3 12 1000 0.5 0 -3 0\n"
+  },
+  {
+    "program": "{print ($1 == 10), ($1 == \"10\"), ($1 < 9)}",
+    "stdin": "10.0\n",
+    "expect": "1 0 0\n"
+  },
+  {
+    "program": "BEGIN{print (x == 0), (x == \"\"), length(x)}",
+    "stdin": "",
+    "expect": "1 1 0\n"
+  },
+  {
+    "program": "BEGIN{a[\"x\"]=1; delete a[\"x\"]; print length(a); if ((\"y\" in a)) print \"no\"; else print \"ok\"}",
+    "stdin": "",
+    "expect": "0\nok\n"
+  },
+  {
+    "program": "BEGIN{a[1,2]=3; for (k in a) {split(k, p, SUBSEP); print p[1], p[2], a[k]}}",
+    "stdin": "",
+    "expect": "1 2 3\n"
+  },
+  {
+    "program": "BEGIN{if ((1,2) in b) print \"yes\"; else print \"no\"}",
+    "stdin": "",
+    "expect": "no\n"
+  },
+  {
+    "program": "function f(n) { return n<=1 ? 1 : n*f(n-1) } BEGIN{print f(10)}",
+    "stdin": "",
+    "expect": "3628800\n"
+  },
+  {
+    "program": "function fill(arr, n,   i) { for (i=1;i<=n;i++) arr[i]=i*i } BEGIN{fill(sq, 4); print sq[3], length(sq)}",
+    "stdin": "",
+    "expect": "9 4\n"
+  },
+  {
+    "program": "function g(x) { x = 5 } BEGIN{y=1; g(y); print y}",
+    "stdin": "",
+    "expect": "1\n"
+  },
+  {
+    "program": "BEGIN{while (i<5) {i++; if (i==2) continue; if (i==4) break; print i}}",
+    "stdin": "",
+    "expect": "1\n3\n"
+  },
+  {
+    "program": "BEGIN{do { k++ } while (k < 3); print k}",
+    "stdin": "",
+    "expect": "3\n"
+  },
+  {
+    "program": "BEGIN{for (;;) {n++; if (n>3) break}; print n}",
+    "stdin": "",
+    "expect": "4\n"
+  },
+  {
+    "program": "NR==1{next} {print}",
+    "stdin": "skip\nkeep\n",
+    "expect": "keep\n"
+  },
+  {
+    "program": "{print} NR==2{exit} END{print \"end\", NR}",
+    "stdin": "a\nb\nc\n",
+    "expect": "a\nb\nend 2\n"
+  },
+  {
+    "program": "BEGIN{exit 3} END{print \"still\"}",
+    "stdin": "",
+    "expect": "still\n"
+  },
+  {
+    "program": "/b/,/c/",
+    "stdin": "a\nb\nx\nc\nd\nb\n",
+    "expect": "b\nx\nc\nb\n"
+  },
+  {
+    "program": "BEGIN{RS=\"\"} {print NR\": \"$1\"/\"NF}",
+    "stdin": "a b\nc\n\n\nd e f\n",
+    "expect": "1: a/3\n2: d/3\n"
+  },
+  {
+    "program": "BEGIN{RS=\";\"} {print NR, $0}",
+    "stdin": "x;y;z",
+    "expect": "1 x\n2 y\n3 z\n"
+  },
+  {
+    "program": "{print $1}",
+    "stdin": "  leading   spaces  \n",
+    "expect": "leading\n"
+  },
+  {
+    "program": "BEGIN{FS=\"\\t\"} {print $2}",
+    "stdin": "a\tb c\td\n",
+    "expect": "b c\n"
+  },
+  {
+    "program": "BEGIN{x[\"a\"]; print length(x)}",
+    "stdin": "",
+    "expect": "1\n"
+  },
+  {
+    "program": "{ $0 = \"new record\"; print $2, NF }",
+    "stdin": "old\n",
+    "expect": "record 2\n"
+  },
+  {
+    "program": "BEGIN { \"echo hi there\" | getline line; print line; close(\"echo hi there\") }",
+    "stdin": "",
+    "expect": "hi there\n"
+  },
+  {
+    "program": "BEGIN { system(\"echo from system\"); print \"after\" }",
+    "stdin": "",
+    "expect": "from system\nafter\n"
+  },
+  {
+    "program": "{ print | \"sort -r\" } END { print \"unsorted-first\" }",
+    "stdin": "b\na\nc\n",
+    "expect": "unsorted-first\nc\nb\na\n",
+    "note": "on a terminal awk's own line comes first; gawk writing to a pipe flushes it last"
+  },
+  {
+    "program": "{ print > \"/tmp/awk-out.txt\" } END { close(\"/tmp/awk-out.txt\"); while ((getline l < \"/tmp/awk-out.txt\") > 0) print \"got\", l }",
+    "stdin": "x\ny\n",
+    "expect": "got x\ngot y\n"
+  },
+  {
+    "program": "NR==FNR { a[$1]; next } $1 in a",
+    "stdin": "",
+    "expect": "b 2\nc 3\n",
+    "args": [
+      "/tmp/k1",
+      "/tmp/k2"
+    ],
+    "files": {
+      "/tmp/k1": "b\nc\n",
+      "/tmp/k2": "a 1\nb 2\nc 3\nd 4\n"
+    }
+  },
+  {
+    "program": "{ getline; print }",
+    "stdin": "1\n2\n3\n4\n",
+    "expect": "2\n4\n"
+  },
+  {
+    "program": "{ getline nxt; print $0 \"+\" nxt }",
+    "stdin": "1\n2\n3\n",
+    "expect": "1+2\n3+2\n"
+  },
+  {
+    "program": "BEGIN { print length() }",
+    "stdin": "",
+    "expect": "0\n"
+  },
+  {
+    "program": "{ print length }",
+    "stdin": "abcd\n",
+    "expect": "4\n"
+  },
+  {
+    "program": "BEGIN { print int(3.9), int(-3.9), sqrt(16), exp(0), log(1), atan2(0, -1) }",
+    "stdin": "",
+    "expect": "3 -3 4 1 0 3.14159\n"
+  },
+  {
+    "program": "BEGIN { x = \"A\"; x = x x x; print x }",
+    "stdin": "",
+    "expect": "AAA\n"
+  },
+  {
+    "program": "BEGIN { print 1 \" \" 2, 1 2 }",
+    "stdin": "",
+    "expect": "1 2 12\n"
+  },
+  {
+    "program": "BEGIN { print -1 \" \" -2 }",
+    "stdin": "",
+    "expect": "-1-2\n"
+  },
+  {
+    "program": "BEGIN { a = 1; b = a++ + ++a; print a, b }",
+    "stdin": "",
+    "expect": "3 4\n"
+  },
+  {
+    "program": "BEGIN { $0 = \"a b c\"; $2 = \"\"; print; print NF }",
+    "stdin": "",
+    "expect": "a  c\n3\n"
+  },
+  {
+    "program": "BEGIN { OFS=\"-\"; $0 = \"a b c\"; $1 = $1; print }",
+    "stdin": "",
+    "expect": "a-b-c\n"
+  },
+  {
+    "program": "{ sum[$3] += $2 } END { print sum[\"NY\"], sum[\"LA\"] }",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "65 25\n"
+  },
+  {
+    "program": "BEGIN { print index(\"héllo\", \"l\"), length(\"héllo\") }",
+    "stdin": "",
+    "expect": "3 5\n",
+    "note": "characters, as gawk in a UTF-8 locale; mawk counts bytes"
+  },
+  {
+    "program": "BEGIN { n = split(\"\", arr); print n, length(arr) }",
+    "stdin": "",
+    "expect": "0 0\n"
+  },
+  {
+    "program": "BEGIN { print 2147483648, 9007199254740992 }",
+    "stdin": "",
+    "expect": "2147483648 9007199254740992\n"
+  },
+  {
+    "program": "BEGIN { printf(\"%s-%s\\n\", \"x\", \"y\") }",
+    "stdin": "",
+    "expect": "x-y\n"
+  },
+  {
+    "program": "BEGIN { if (!(3 in q)) print \"absent\" }",
+    "stdin": "",
+    "expect": "absent\n"
+  },
+  {
+    "program": "BEGIN { s = \"aaa\"; print gsub(/a/, \"\\\\&\", s), s }",
+    "stdin": "",
+    "expect": "3 &&&\n",
+    "note": "\"\\\\&\" is a literal ampersand (POSIX); the reference gawk run on Windows mangles the backslashes"
+  },
+  {
+    "program": "BEGIN { s = \"x\"; sub(/x/, \"[&&]\", s); print s }",
+    "stdin": "",
+    "expect": "[xx]\n"
+  },
+  {
+    "program": "{ print $(NF-1) }",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "30\n25\n35\n25\n"
+  },
+  {
+    "program": "{ print $NF-1 }",
+    "stdin": "5 10\n",
+    "expect": "9\n"
+  },
+  {
+    "program": "BEGIN { getline; print \"first:\", $0; getline line; print \"second:\", line }",
+    "stdin": "L1\nL2\n",
+    "expect": "first: L1\nsecond: L2\n"
+  },
+  {
+    "program": "END { print $0, NF }",
+    "stdin": "a b\nlast line here\n",
+    "expect": "last line here 3\n"
+  },
+  {
+    "program": "{ $3 = \"\"; NF = 2; print $0 \"|\" }",
+    "stdin": "a b c d\n",
+    "expect": "a b|\n"
+  },
+  {
+    "program": "BEGIN { x[1]=1; x[2]=2; x[10]=10; n=0; for (k in x) n += k; print n }",
+    "stdin": "",
+    "expect": "13\n"
+  },
+  {
+    "program": "{ printf \"%-6s|%6.1f\\n\", $1, $2 }",
+    "stdin": "alice 30 NY\nbob 25 LA\ncarol 35 NY\ndave 25 SF\n",
+    "expect": "alice |  30.0\nbob   |  25.0\ncarol |  35.0\ndave  |  25.0\n"
+  },
+  {
+    "program": "BEGIN { while ((\"echo a; echo b\" | getline v) > 0) out = out v; print out }",
+    "stdin": "",
+    "expect": "ab\n"
+  }
+]

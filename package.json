@@ -1,0 +1,10 @@
+{
+  "name": "ubuntu-ai-desktop",
+  "private": true,
+  "description": "Ubuntu 24.04 desktop emulator that runs in the browser — no build step, no dependencies.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\"",
+    "test:diff": "node tests/differential.mjs"
+  }
+}

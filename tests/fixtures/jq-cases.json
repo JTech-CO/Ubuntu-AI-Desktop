@@ -1,0 +1,1981 @@
+{
+  "cases": [
+    {
+      "program": ".",
+      "input": "\"Hello, world!\"",
+      "expected": [
+        "\"Hello, world!\""
+      ]
+    },
+    {
+      "program": ".foo",
+      "input": "{\"foo\": 42, \"bar\": \"less interesting data\"}",
+      "expected": [
+        "42"
+      ]
+    },
+    {
+      "program": ".foo?",
+      "input": "[1,2]",
+      "expected": []
+    },
+    {
+      "program": "[.foo?]",
+      "input": "[1,2]",
+      "expected": [
+        "[]"
+      ]
+    },
+    {
+      "program": ".[0]",
+      "input": "[{\"name\":\"JSON\", \"good\":true}, {\"name\":\"XML\", \"good\":false}]",
+      "expected": [
+        "{\"name\":\"JSON\", \"good\":true}"
+      ]
+    },
+    {
+      "program": ".[-2]",
+      "input": "[1,2,3]",
+      "expected": [
+        "2"
+      ]
+    },
+    {
+      "program": ".[2:4]",
+      "input": "[\"a\",\"b\",\"c\",\"d\",\"e\"]",
+      "expected": [
+        "[\"c\", \"d\"]"
+      ]
+    },
+    {
+      "program": ".[2:4]",
+      "input": "\"abcdefghi\"",
+      "expected": [
+        "\"cd\""
+      ]
+    },
+    {
+      "program": ".[:3]",
+      "input": "[\"a\",\"b\",\"c\",\"d\",\"e\"]",
+      "expected": [
+        "[\"a\", \"b\", \"c\"]"
+      ]
+    },
+    {
+      "program": ".[-2:]",
+      "input": "[\"a\",\"b\",\"c\",\"d\",\"e\"]",
+      "expected": [
+        "[\"d\", \"e\"]"
+      ]
+    },
+    {
+      "program": ".[]",
+      "input": "[{\"name\":\"JSON\", \"good\":true}, {\"name\":\"XML\", \"good\":false}]",
+      "expected": [
+        "{\"name\":\"JSON\", \"good\":true}",
+        "{\"name\":\"XML\", \"good\":false}"
+      ]
+    },
+    {
+      "program": ".foo, .bar",
+      "input": "{\"foo\": 42, \"bar\": \"something else\", \"baz\": true}",
+      "expected": [
+        "42",
+        "\"something else\""
+      ]
+    },
+    {
+      "program": ".user, .projects[]",
+      "input": "{\"user\":\"stedolan\", \"projects\": [\"jq\", \"wikiflow\"]}",
+      "expected": [
+        "\"stedolan\"",
+        "\"jq\"",
+        "\"wikiflow\""
+      ]
+    },
+    {
+      "program": ".[4,2]",
+      "input": "[\"a\",\"b\",\"c\",\"d\",\"e\"]",
+      "expected": [
+        "\"e\"",
+        "\"c\""
+      ]
+    },
+    {
+      "program": "(. + 2) * 5",
+      "input": "1",
+      "expected": [
+        "15"
+      ]
+    },
+    {
+      "program": "[.user, .projects[]]",
+      "input": "{\"user\":\"stedolan\", \"projects\": [\"jq\", \"wikiflow\"]}",
+      "expected": [
+        "[\"stedolan\", \"jq\", \"wikiflow\"]"
+      ]
+    },
+    {
+      "program": "{user, title: .titles[]}",
+      "input": "{\"user\":\"stedolan\",\"titles\":[\"JQ Primer\", \"More JQ\"]}",
+      "expected": [
+        "{\"user\":\"stedolan\", \"title\": \"JQ Primer\"}",
+        "{\"user\":\"stedolan\", \"title\": \"More JQ\"}"
+      ]
+    },
+    {
+      "program": "{(.user): .titles}",
+      "input": "{\"user\":\"stedolan\",\"titles\":[\"JQ Primer\", \"More JQ\"]}",
+      "expected": [
+        "{\"stedolan\": [\"JQ Primer\", \"More JQ\"]}"
+      ]
+    },
+    {
+      "program": "..|.a?",
+      "input": "[[{\"a\":1}]]",
+      "expected": [
+        "1"
+      ]
+    },
+    {
+      "program": ".a + 1",
+      "input": "{\"a\": 7}",
+      "expected": [
+        "8"
+      ]
+    },
+    {
+      "program": ".a + .b",
+      "input": "{\"a\": [1,2], \"b\": [3,4]}",
+      "expected": [
+        "[1,2,3,4]"
+      ]
+    },
+    {
+      "program": ".a + null",
+      "input": "{\"a\": 1}",
+      "expected": [
+        "1"
+      ]
+    },
+    {
+      "program": ".a + 1",
+      "input": "{}",
+      "expected": [
+        "1"
+      ]
+    },
+    {
+      "program": "{a: 1} + {b: 2} + {c: 3} + {a: 42}",
+      "input": "null",
+      "expected": [
+        "{\"a\": 42, \"b\": 2, \"c\": 3}"
+      ]
+    },
+    {
+      "program": "4 - .a",
+      "input": "{\"a\":3}",
+      "expected": [
+        "1"
+      ]
+    },
+    {
+      "program": ". - [\"xml\", \"yaml\"]",
+      "input": "[\"xml\", \"yaml\", \"json\"]",
+      "expected": [
+        "[\"json\"]"
+      ]
+    },
+    {
+      "program": "10 / . * 3",
+      "input": "5",
+      "expected": [
+        "6"
+      ]
+    },
+    {
+      "program": ". / \", \"",
+      "input": "\"a, b,c,d, e\"",
+      "expected": [
+        "[\"a\",\"b,c,d\",\"e\"]"
+      ]
+    },
+    {
+      "program": "{\"k\": {\"a\": 1, \"b\": 2}} * {\"k\": {\"a\": 0,\"c\": 3}}",
+      "input": "null",
+      "expected": [
+        "{\"k\": {\"a\": 0, \"b\": 2, \"c\": 3}}"
+      ]
+    },
+    {
+      "program": ".[] | (1 / .)?",
+      "input": "[1,0,-1]",
+      "expected": [
+        "1",
+        "-1"
+      ]
+    },
+    {
+      "program": ".[] | length",
+      "input": "[[1,2], \"string\", {\"a\":2}, null, -5]",
+      "expected": [
+        "2",
+        "6",
+        "1",
+        "0",
+        "5"
+      ]
+    },
+    {
+      "program": "utf8bytelength",
+      "input": "\"\\u03bc\"",
+      "expected": [
+        "2"
+      ]
+    },
+    {
+      "program": "keys",
+      "input": "{\"abc\": 1, \"abcd\": 2, \"Foo\": 3}",
+      "expected": [
+        "[\"Foo\", \"abc\", \"abcd\"]"
+      ]
+    },
+    {
+      "program": "keys",
+      "input": "[42,3,35]",
+      "expected": [
+        "[0,1,2]"
+      ]
+    },
+    {
+      "program": "map(has(\"foo\"))",
+      "input": "[{\"foo\": 42}, {}]",
+      "expected": [
+        "[true, false]"
+      ]
+    },
+    {
+      "program": "map(has(2))",
+      "input": "[[0,1], [\"a\",\"b\",\"c\"]]",
+      "expected": [
+        "[false, true]"
+      ]
+    },
+    {
+      "program": ".[] | in({\"foo\": 42})",
+      "input": "[\"foo\", \"bar\"]",
+      "expected": [
+        "true",
+        "false"
+      ]
+    },
+    {
+      "program": "map(in([0,1]))",
+      "input": "[2, 0]",
+      "expected": [
+        "[false, true]"
+      ]
+    },
+    {
+      "program": "map(.+1)",
+      "input": "[1,2,3]",
+      "expected": [
+        "[2,3,4]"
+      ]
+    },
+    {
+      "program": "map_values(.+1)",
+      "input": "{\"a\": 1, \"b\": 2, \"c\": 3}",
+      "expected": [
+        "{\"a\": 2, \"b\": 3, \"c\": 4}"
+      ]
+    },
+    {
+      "program": "map(., .)",
+      "input": "[1,2]",
+      "expected": [
+        "[1,1,2,2]"
+      ]
+    },
+    {
+      "program": "map_values(. // empty)",
+      "input": "{\"a\": null, \"b\": true, \"c\": false}",
+      "expected": [
+        "{\"b\": true}"
+      ]
+    },
+    {
+      "program": "pick(.a, .b.c, .x)",
+      "input": "{\"a\": 1, \"b\": {\"c\": 2, \"d\": 3}, \"e\": 4}",
+      "expected": [
+        "{\"a\":1,\"b\":{\"c\":2},\"x\":null}"
+      ]
+    },
+    {
+      "program": "pick(.[2], .[0], .[0])",
+      "input": "[1,2,3,4]",
+      "expected": [
+        "[1,null,3]"
+      ]
+    },
+    {
+      "program": "path(.a[0].b)",
+      "input": "null",
+      "expected": [
+        "[\"a\",0,\"b\"]"
+      ]
+    },
+    {
+      "program": "[path(..)]",
+      "input": "{\"a\":[{\"b\":1}]}",
+      "expected": [
+        "[[],[\"a\"],[\"a\",0],[\"a\",0,\"b\"]]"
+      ]
+    },
+    {
+      "program": "del(.foo)",
+      "input": "{\"foo\": 42, \"bar\": 9001, \"baz\": 42}",
+      "expected": [
+        "{\"bar\": 9001, \"baz\": 42}"
+      ]
+    },
+    {
+      "program": "del(.[1, 2])",
+      "input": "[\"foo\", \"bar\", \"baz\"]",
+      "expected": [
+        "[\"foo\"]"
+      ]
+    },
+    {
+      "program": "getpath([\"a\",\"b\"])",
+      "input": "null",
+      "expected": [
+        "null"
+      ]
+    },
+    {
+      "program": "[getpath([\"a\",\"b\"], [\"a\",\"c\"])]",
+      "input": "{\"a\":{\"b\":0, \"c\":1}}",
+      "expected": [
+        "[0, 1]"
+      ]
+    },
+    {
+      "program": "setpath([\"a\",\"b\"]; 1)",
+      "input": "null",
+      "expected": [
+        "{\"a\": {\"b\": 1}}"
+      ]
+    },
+    {
+      "program": "setpath([\"a\",\"b\"]; 1)",
+      "input": "{\"a\":{\"b\":0}}",
+      "expected": [
+        "{\"a\": {\"b\": 1}}"
+      ]
+    },
+    {
+      "program": "setpath([0,\"a\"]; 1)",
+      "input": "null",
+      "expected": [
+        "[{\"a\":1}]"
+      ]
+    },
+    {
+      "program": "delpaths([[\"a\",\"b\"]])",
+      "input": "{\"a\":{\"b\":1},\"x\":{\"y\":2}}",
+      "expected": [
+        "{\"a\":{},\"x\":{\"y\":2}}"
+      ]
+    },
+    {
+      "program": "to_entries",
+      "input": "{\"a\": 1, \"b\": 2}",
+      "expected": [
+        "[{\"key\":\"a\", \"value\":1}, {\"key\":\"b\", \"value\":2}]"
+      ]
+    },
+    {
+      "program": "from_entries",
+      "input": "[{\"key\":\"a\", \"value\":1}, {\"key\":\"b\", \"value\":2}]",
+      "expected": [
+        "{\"a\": 1, \"b\": 2}"
+      ]
+    },
+    {
+      "program": "with_entries(.value += 1)",
+      "input": "{\"a\": 1, \"b\": 2}",
+      "expected": [
+        "{\"a\": 2, \"b\": 3}"
+      ]
+    },
+    {
+      "program": "map(select(. >= 2))",
+      "input": "[1,5,3,0,7]",
+      "expected": [
+        "[5,3,7]"
+      ]
+    },
+    {
+      "program": ".[] | select(.id == \"second\")",
+      "input": "[{\"id\": \"first\", \"val\": 1}, {\"id\": \"second\", \"val\": 2}]",
+      "expected": [
+        "{\"id\": \"second\", \"val\": 2}"
+      ]
+    },
+    {
+      "program": ".[]|numbers",
+      "input": "[[],{},1,\"foo\",null,true,false]",
+      "expected": [
+        "1"
+      ]
+    },
+    {
+      "program": "1, empty, 2",
+      "input": "null",
+      "expected": [
+        "1",
+        "2"
+      ]
+    },
+    {
+      "program": "[1,2,empty,3]",
+      "input": "null",
+      "expected": [
+        "[1,2,3]"
+      ]
+    },
+    {
+      "program": "try error catch .",
+      "input": "\"error message\"",
+      "expected": [
+        "\"error message\""
+      ]
+    },
+    {
+      "program": "try error(\"invalid value: \\(.)\") catch .",
+      "input": "42",
+      "expected": [
+        "\"invalid value: 42\""
+      ]
+    },
+    {
+      "program": "try error(\"\\($__loc__)\") catch .",
+      "input": "null",
+      "expected": [
+        "\"{\\\"file\\\":\\\"<stdin>\\\",\\\"line\\\":1}\""
+      ]
+    },
+    {
+      "program": "[paths]",
+      "input": "[1,[[],{\"a\":2}]]",
+      "expected": [
+        "[[0],[1],[1,0],[1,1],[1,1,\"a\"]]"
+      ]
+    },
+    {
+      "program": "[paths(type == \"number\")]",
+      "input": "[1,[[],{\"a\":2}]]",
+      "expected": [
+        "[[0],[1,1,\"a\"]]"
+      ]
+    },
+    {
+      "program": "add",
+      "input": "[\"a\",\"b\",\"c\"]",
+      "expected": [
+        "\"abc\""
+      ]
+    },
+    {
+      "program": "add",
+      "input": "[1, 2, 3]",
+      "expected": [
+        "6"
+      ]
+    },
+    {
+      "program": "add",
+      "input": "[]",
+      "expected": [
+        "null"
+      ]
+    },
+    {
+      "program": "any",
+      "input": "[true, false]",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": "any",
+      "input": "[false, false]",
+      "expected": [
+        "false"
+      ]
+    },
+    {
+      "program": "any",
+      "input": "[]",
+      "expected": [
+        "false"
+      ]
+    },
+    {
+      "program": "all",
+      "input": "[true, false]",
+      "expected": [
+        "false"
+      ]
+    },
+    {
+      "program": "all",
+      "input": "[true, true]",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": "all",
+      "input": "[]",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": "flatten",
+      "input": "[1, [2], [[3]]]",
+      "expected": [
+        "[1, 2, 3]"
+      ]
+    },
+    {
+      "program": "flatten(1)",
+      "input": "[1, [2], [[3]]]",
+      "expected": [
+        "[1, 2, [3]]"
+      ]
+    },
+    {
+      "program": "flatten",
+      "input": "[[]]",
+      "expected": [
+        "[]"
+      ]
+    },
+    {
+      "program": "flatten",
+      "input": "[{\"foo\": \"bar\"}, [{\"foo\": \"baz\"}]]",
+      "expected": [
+        "[{\"foo\": \"bar\"}, {\"foo\": \"baz\"}]"
+      ]
+    },
+    {
+      "program": "range(2; 4)",
+      "input": "null",
+      "expected": [
+        "2",
+        "3"
+      ]
+    },
+    {
+      "program": "[range(4)]",
+      "input": "null",
+      "expected": [
+        "[0,1,2,3]"
+      ]
+    },
+    {
+      "program": "[range(0; 10; 3)]",
+      "input": "null",
+      "expected": [
+        "[0,3,6,9]"
+      ]
+    },
+    {
+      "program": "[range(0; 10; -1)]",
+      "input": "null",
+      "expected": [
+        "[]"
+      ]
+    },
+    {
+      "program": "[range(0; -5; -1)]",
+      "input": "null",
+      "expected": [
+        "[0,-1,-2,-3,-4]"
+      ]
+    },
+    {
+      "program": "[range(0,1; 3,4)]",
+      "input": "null",
+      "expected": [
+        "[0,1,2, 0,1,2,3, 1,2, 1,2,3]"
+      ]
+    },
+    {
+      "program": "floor",
+      "input": "3.14159",
+      "expected": [
+        "3"
+      ]
+    },
+    {
+      "program": "sqrt",
+      "input": "9",
+      "expected": [
+        "3"
+      ]
+    },
+    {
+      "program": ".[] | tonumber",
+      "input": "[1, \"1\"]",
+      "expected": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "program": ".[] | tostring",
+      "input": "[1, \"1\", [1]]",
+      "expected": [
+        "\"1\"",
+        "\"1\"",
+        "\"[1]\""
+      ]
+    },
+    {
+      "program": "map(type)",
+      "input": "[0, false, [], {}, null, \"hello\"]",
+      "expected": [
+        "[\"number\", \"boolean\", \"array\", \"object\", \"null\", \"string\"]"
+      ]
+    },
+    {
+      "program": ".[] | (infinite * .) < 0",
+      "input": "[-1, 1]",
+      "expected": [
+        "true",
+        "false"
+      ]
+    },
+    {
+      "program": "infinite, -infinite | isinfinite",
+      "input": "null",
+      "expected": [
+        "true",
+        "true"
+      ]
+    },
+    {
+      "program": "sort",
+      "input": "[8,3,null,6]",
+      "expected": [
+        "[null,3,6,8]"
+      ]
+    },
+    {
+      "program": "sort_by(.foo)",
+      "input": "[{\"foo\":4, \"bar\":10}, {\"foo\":3, \"bar\":10}, {\"foo\":2, \"bar\":1}]",
+      "expected": [
+        "[{\"foo\":2, \"bar\":1}, {\"foo\":3, \"bar\":10}, {\"foo\":4, \"bar\":10}]"
+      ]
+    },
+    {
+      "program": "sort_by(.foo, .bar)",
+      "input": "[{\"foo\":4, \"bar\":10}, {\"foo\":3, \"bar\":20}, {\"foo\":2, \"bar\":1}, {\"foo\":3, \"bar\":10}]",
+      "expected": [
+        "[{\"foo\":2, \"bar\":1}, {\"foo\":3, \"bar\":10}, {\"foo\":3, \"bar\":20}, {\"foo\":4, \"bar\":10}]"
+      ]
+    },
+    {
+      "program": "group_by(.foo)",
+      "input": "[{\"foo\":1, \"bar\":10}, {\"foo\":3, \"bar\":100}, {\"foo\":1, \"bar\":1}]",
+      "expected": [
+        "[[{\"foo\":1, \"bar\":10}, {\"foo\":1, \"bar\":1}], [{\"foo\":3, \"bar\":100}]]"
+      ]
+    },
+    {
+      "program": "min",
+      "input": "[5,4,2,7]",
+      "expected": [
+        "2"
+      ]
+    },
+    {
+      "program": "max_by(.foo)",
+      "input": "[{\"foo\":1, \"bar\":14}, {\"foo\":2, \"bar\":3}]",
+      "expected": [
+        "{\"foo\":2, \"bar\":3}"
+      ]
+    },
+    {
+      "program": "unique",
+      "input": "[1,2,5,3,5,3,1,3]",
+      "expected": [
+        "[1,2,3,5]"
+      ]
+    },
+    {
+      "program": "unique_by(.foo)",
+      "input": "[{\"foo\": 1, \"bar\": 2}, {\"foo\": 1, \"bar\": 3}, {\"foo\": 4, \"bar\": 5}]",
+      "expected": [
+        "[{\"foo\": 1, \"bar\": 2}, {\"foo\": 4, \"bar\": 5}]"
+      ]
+    },
+    {
+      "program": "unique_by(length)",
+      "input": "[\"chunky\", \"bacon\", \"kitten\", \"cicada\", \"asparagus\"]",
+      "expected": [
+        "[\"bacon\", \"chunky\", \"asparagus\"]"
+      ]
+    },
+    {
+      "program": "reverse",
+      "input": "[1,2,3,4]",
+      "expected": [
+        "[4,3,2,1]"
+      ]
+    },
+    {
+      "program": "contains(\"bar\")",
+      "input": "\"foobar\"",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": "contains([\"baz\", \"bar\"])",
+      "input": "[\"foobar\", \"foobaz\", \"blarp\"]",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": "contains([\"bazzzzz\", \"bar\"])",
+      "input": "[\"foobar\", \"foobaz\", \"blarp\"]",
+      "expected": [
+        "false"
+      ]
+    },
+    {
+      "program": "contains({foo: 12, bar: [{barp: 12}]})",
+      "input": "{\"foo\": 12, \"bar\":[1,2,{\"barp\":12, \"blip\":13}]}",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": "contains({foo: 12, bar: [{barp: 15}]})",
+      "input": "{\"foo\": 12, \"bar\":[1,2,{\"barp\":12, \"blip\":13}]}",
+      "expected": [
+        "false"
+      ]
+    },
+    {
+      "program": "indices(\", \")",
+      "input": "\"a,b, cd, efg, hijk\"",
+      "expected": [
+        "[3,7,12]"
+      ]
+    },
+    {
+      "program": "indices(1)",
+      "input": "[0,1,2,1,3,1,4]",
+      "expected": [
+        "[1,3,5]"
+      ]
+    },
+    {
+      "program": "indices([1,2])",
+      "input": "[0,1,2,3,1,4,2,5,1,2,6,7]",
+      "expected": [
+        "[1,8]"
+      ]
+    },
+    {
+      "program": "index(\", \")",
+      "input": "\"a,b, cd, efg, hijk\"",
+      "expected": [
+        "3"
+      ]
+    },
+    {
+      "program": "rindex(\", \")",
+      "input": "\"a,b, cd, efg, hijk\"",
+      "expected": [
+        "12"
+      ]
+    },
+    {
+      "program": "index(1)",
+      "input": "[0,1,2,1,3,1,4]",
+      "expected": [
+        "1"
+      ]
+    },
+    {
+      "program": "rindex([1,2])",
+      "input": "[0,1,2,3,1,4,2,5,1,2,6,7]",
+      "expected": [
+        "8"
+      ]
+    },
+    {
+      "program": "inside(\"foobar\")",
+      "input": "\"bar\"",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": "inside([\"foobar\", \"foobaz\", \"blarp\"])",
+      "input": "[\"baz\", \"bar\"]",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": "[.[]|startswith(\"foo\")]",
+      "input": "[\"fo\", \"foo\", \"barfoo\", \"foobar\", \"barfoob\"]",
+      "expected": [
+        "[false, true, false, true, false]"
+      ]
+    },
+    {
+      "program": "[.[]|endswith(\"foo\")]",
+      "input": "[\"foobar\", \"barfoo\"]",
+      "expected": [
+        "[false, true]"
+      ]
+    },
+    {
+      "program": "combinations",
+      "input": "[[1,2], [3, 4]]",
+      "expected": [
+        "[1, 3]",
+        "[1, 4]",
+        "[2, 3]",
+        "[2, 4]"
+      ]
+    },
+    {
+      "program": "combinations(2)",
+      "input": "[0, 1]",
+      "expected": [
+        "[0, 0]",
+        "[0, 1]",
+        "[1, 0]",
+        "[1, 1]"
+      ]
+    },
+    {
+      "program": "[.[]|ltrimstr(\"foo\")]",
+      "input": "[\"fo\", \"foo\", \"barfoo\", \"foobar\", \"afoo\"]",
+      "expected": [
+        "[\"fo\",\"\",\"barfoo\",\"bar\",\"afoo\"]"
+      ]
+    },
+    {
+      "program": "[.[]|rtrimstr(\"foo\")]",
+      "input": "[\"fo\", \"foo\", \"barfoo\", \"foobar\", \"foob\"]",
+      "expected": [
+        "[\"fo\",\"\",\"bar\",\"foobar\",\"foob\"]"
+      ]
+    },
+    {
+      "program": "explode",
+      "input": "\"foobar\"",
+      "expected": [
+        "[102,111,111,98,97,114]"
+      ]
+    },
+    {
+      "program": "implode",
+      "input": "[65, 66, 67]",
+      "expected": [
+        "\"ABC\""
+      ]
+    },
+    {
+      "program": "split(\", \")",
+      "input": "\"a, b,c,d, e, \"",
+      "expected": [
+        "[\"a\",\"b,c,d\",\"e\",\"\"]"
+      ]
+    },
+    {
+      "program": "join(\", \")",
+      "input": "[\"a\",\"b,c,d\",\"e\"]",
+      "expected": [
+        "\"a, b,c,d, e\""
+      ]
+    },
+    {
+      "program": "join(\" \")",
+      "input": "[\"a\",1,2.3,true,null,false]",
+      "expected": [
+        "\"a 1 2.3 true  false\""
+      ]
+    },
+    {
+      "program": "ascii_downcase",
+      "input": "\"useful but not for é\"",
+      "expected": [
+        "\"useful but not for é\""
+      ]
+    },
+    {
+      "program": "ascii_upcase",
+      "input": "\"useful but not for é\"",
+      "expected": [
+        "\"USEFUL BUT NOT FOR é\""
+      ]
+    },
+    {
+      "program": "[while(.<100; .*2)]",
+      "input": "1",
+      "expected": [
+        "[1,2,4,8,16,32,64]"
+      ]
+    },
+    {
+      "program": "[.,1]|until(.[0] < 1; [.[0] - 1, .[1] * .[0]])|.[1]",
+      "input": "4",
+      "expected": [
+        "24"
+      ]
+    },
+    {
+      "program": "recurse(.foo[])",
+      "input": "{\"foo\":[{\"foo\": []}, {\"foo\":[{\"foo\":[]}]}]}",
+      "expected": [
+        "{\"foo\":[{\"foo\":[]},{\"foo\":[{\"foo\":[]}]}]}",
+        "{\"foo\":[]}",
+        "{\"foo\":[{\"foo\":[]}]}",
+        "{\"foo\":[]}"
+      ]
+    },
+    {
+      "program": "recurse",
+      "input": "{\"a\":0,\"b\":[1]}",
+      "expected": [
+        "{\"a\":0,\"b\":[1]}",
+        "0",
+        "[1]",
+        "1"
+      ]
+    },
+    {
+      "program": "recurse(. * .; . < 20)",
+      "input": "2",
+      "expected": [
+        "2",
+        "4",
+        "16"
+      ]
+    },
+    {
+      "program": "walk(if type == \"array\" then sort else . end)",
+      "input": "[[4, 1, 7], [8, 5, 2], [3, 6, 9]]",
+      "expected": [
+        "[[1,4,7],[2,5,8],[3,6,9]]"
+      ]
+    },
+    {
+      "program": "walk( if type == \"object\" then with_entries( .key |= sub( \"^_+\"; \"\") ) else . end )",
+      "input": "[ { \"_a\": { \"__b\": 2 } } ]",
+      "expected": [
+        "[{\"a\":{\"b\":2}}]"
+      ]
+    },
+    {
+      "program": "transpose",
+      "input": "[[1], [2,3]]",
+      "expected": [
+        "[[1,2],[null,3]]"
+      ]
+    },
+    {
+      "program": "@html",
+      "input": "\"This works if x < y\"",
+      "expected": [
+        "\"This works if x &lt; y\""
+      ]
+    },
+    {
+      "program": "@sh \"echo \\(.)\"",
+      "input": "\"O'Hara's Ale\"",
+      "expected": [
+        "\"echo 'O'\\\\''Hara'\\\\''s Ale'\""
+      ]
+    },
+    {
+      "program": "@base64",
+      "input": "\"This is a message\"",
+      "expected": [
+        "\"VGhpcyBpcyBhIG1lc3NhZ2U=\""
+      ]
+    },
+    {
+      "program": "@base64d",
+      "input": "\"VGhpcyBpcyBhIG1lc3NhZ2U=\"",
+      "expected": [
+        "\"This is a message\""
+      ]
+    },
+    {
+      "program": "[.[]|tojson]",
+      "input": "[1, \"1\", [1]]",
+      "expected": [
+        "[\"1\",\"\\\"1\\\"\",\"[1]\"]"
+      ]
+    },
+    {
+      "program": "[.[]|tojson|fromjson]",
+      "input": "[1, \"1\", [1]]",
+      "expected": [
+        "[1,\"1\",[1]]"
+      ]
+    },
+    {
+      "program": "@csv",
+      "input": "[1,\"a,b\",\"c\\\"d\"]",
+      "expected": [
+        "\"1,\\\"a,b\\\",\\\"c\\\"\\\"d\\\"\""
+      ]
+    },
+    {
+      "program": "@tsv",
+      "input": "[\"1\",\"a\\tb\"]",
+      "expected": [
+        "\"1\\ta\\\\tb\""
+      ]
+    },
+    {
+      "program": "@uri \"https://www.google.com/search?q=\\(.search)\"",
+      "input": "{\"search\":\"what is jq?\"}",
+      "expected": [
+        "\"https://www.google.com/search?q=what%20is%20jq%3F\""
+      ]
+    },
+    {
+      "program": "fromdate",
+      "input": "\"2015-03-05T23:51:47Z\"",
+      "expected": [
+        "1425599507"
+      ]
+    },
+    {
+      "program": "strptime(\"%Y-%m-%dT%H:%M:%SZ\")",
+      "input": "\"2015-03-05T23:51:47Z\"",
+      "expected": [
+        "[2015,2,5,23,51,47,4,63]"
+      ]
+    },
+    {
+      "program": "strptime(\"%Y-%m-%dT%H:%M:%SZ\")|mktime",
+      "input": "\"2015-03-05T23:51:47Z\"",
+      "expected": [
+        "1425599507"
+      ]
+    },
+    {
+      "program": "todate",
+      "input": "1425599507",
+      "expected": [
+        "\"2015-03-05T23:51:47Z\""
+      ]
+    },
+    {
+      "program": "strftime(\"%A, %B %d, %Y\")",
+      "input": "1425599507",
+      "expected": [
+        "\"Thursday, March 05, 2015\""
+      ]
+    },
+    {
+      "program": "gmtime",
+      "input": "1425599507",
+      "expected": [
+        "[2015,2,5,23,51,47,4,63]"
+      ]
+    },
+    {
+      "program": ".[] == 1",
+      "input": "[1, 1.0, \"1\", \"banana\"]",
+      "expected": [
+        "true",
+        "true",
+        "false",
+        "false"
+      ]
+    },
+    {
+      "program": "42 and \"a string\"",
+      "input": "null",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": "(true, false) or false",
+      "input": "null",
+      "expected": [
+        "true",
+        "false"
+      ]
+    },
+    {
+      "program": "(true, true) and (true, false)",
+      "input": "null",
+      "expected": [
+        "true",
+        "false",
+        "true",
+        "false"
+      ]
+    },
+    {
+      "program": "[true, false | not]",
+      "input": "null",
+      "expected": [
+        "[false, true]"
+      ]
+    },
+    {
+      "program": "empty // 42",
+      "input": "null",
+      "expected": [
+        "42"
+      ]
+    },
+    {
+      "program": ".foo // 42",
+      "input": "{\"foo\": 19}",
+      "expected": [
+        "19"
+      ]
+    },
+    {
+      "program": ".foo // 42",
+      "input": "{}",
+      "expected": [
+        "42"
+      ]
+    },
+    {
+      "program": "(false, null, 1) // 42",
+      "input": "null",
+      "expected": [
+        "1"
+      ]
+    },
+    {
+      "program": "(false, null, 1) | . // 42",
+      "input": "null",
+      "expected": [
+        "42",
+        "42",
+        "1"
+      ]
+    },
+    {
+      "program": "[.[] | .a?]",
+      "input": "[{}, true, {\"a\":1}]",
+      "expected": [
+        "[null, 1]"
+      ]
+    },
+    {
+      "program": ".a = .b",
+      "input": "{\"a\": {\"b\": 10}, \"b\": 20}",
+      "expected": [
+        "{\"a\":20,\"b\":20}"
+      ]
+    },
+    {
+      "program": "(..|select(type==\"boolean\")) |= if . then 1 else 0 end",
+      "input": "[true,false,[5,true,[true,[false]],false]]",
+      "expected": [
+        "[1,0,[5,1,[1,[0]],0]]"
+      ]
+    },
+    {
+      "program": ".foo += 1",
+      "input": "{\"foo\": 42}",
+      "expected": [
+        "{\"foo\": 43}"
+      ]
+    },
+    {
+      "program": "(.a, .b) = range(3)",
+      "input": "null",
+      "expected": [
+        "{\"a\":0,\"b\":0}",
+        "{\"a\":1,\"b\":1}",
+        "{\"a\":2,\"b\":2}"
+      ]
+    },
+    {
+      "program": "(.a, .b) |= range(3)",
+      "input": "null",
+      "expected": [
+        "{\"a\":0,\"b\":0}"
+      ]
+    },
+    {
+      "program": ".[] |= empty",
+      "input": "[1,2,3,4]",
+      "expected": [
+        "[2,4]"
+      ]
+    },
+    {
+      "program": "reduce .[] as $item (0; . + $item)",
+      "input": "[1,2,3,4,5]",
+      "expected": [
+        "15"
+      ]
+    },
+    {
+      "program": "reduce .[] as [$i,$j] (0; . + $i * $j)",
+      "input": "[[1,2],[3,4],[5,6]]",
+      "expected": [
+        "44"
+      ]
+    },
+    {
+      "program": "reduce .[] as {$x,$y} (null; .x += $x | .y += [$y])",
+      "input": "[{\"x\":\"a\",\"y\":1},{\"x\":\"b\",\"y\":2},{\"x\":\"c\",\"y\":3}]",
+      "expected": [
+        "{\"x\":\"abc\",\"y\":[1,2,3]}"
+      ]
+    },
+    {
+      "program": "foreach .[] as $item (0; . + $item; [$item, . * 2])",
+      "input": "[1,2,3,4,5]",
+      "expected": [
+        "[1,2]",
+        "[2,6]",
+        "[3,12]",
+        "[4,20]",
+        "[5,30]"
+      ]
+    },
+    {
+      "program": "foreach .[] as [$i, $j] (0; . + $i - $j)",
+      "input": "[[2,1], [5,3], [6,4]]",
+      "expected": [
+        "1",
+        "3",
+        "5"
+      ]
+    },
+    {
+      "program": "foreach .[] as {a:$a} (0; . + $a; -.)",
+      "input": "[{\"a\":1}, {\"b\":2}, {\"a\":3, \"b\":4}]",
+      "expected": [
+        "-1",
+        "-1",
+        "-4"
+      ]
+    },
+    {
+      "program": "[limit(3;.[])]",
+      "input": "[0,1,2,3,4,5,6,7,8,9]",
+      "expected": [
+        "[0,1,2]"
+      ]
+    },
+    {
+      "program": "[first(range(.)), last(range(.)), nth(./2; range(.))]",
+      "input": "10",
+      "expected": [
+        "[0,9,5]"
+      ]
+    },
+    {
+      "program": "[range(.)]|[first, last, nth(5)]",
+      "input": "10",
+      "expected": [
+        "[0,9,5]"
+      ]
+    },
+    {
+      "program": "def addvalue(f): . + [f]; map(addvalue(.[0]))",
+      "input": "[[1,2],[10,20]]",
+      "expected": [
+        "[[1,2,1], [10,20,10]]"
+      ]
+    },
+    {
+      "program": "def addvalue(f): f as $x | map(. + $x); addvalue(.[0])",
+      "input": "[[1,2],[10,20]]",
+      "expected": [
+        "[[1,2,1,2], [10,20,1,2]]"
+      ]
+    },
+    {
+      "program": "def f($a; $b): $a + $b; f(1; 2)",
+      "input": "null",
+      "expected": [
+        "3"
+      ]
+    },
+    {
+      "program": "def fac: if . <= 1 then 1 else . * (. - 1 | fac) end; fac",
+      "input": "10",
+      "expected": [
+        "3628800"
+      ]
+    },
+    {
+      "program": ". as [$a, $b, {c: $c}] | $a + $b + $c",
+      "input": "[2, 3, {\"c\": 4, \"d\": 5}]",
+      "expected": [
+        "9"
+      ]
+    },
+    {
+      "program": ".[] as [$a, $b] | {a: $a, b: $b}",
+      "input": "[[0], [0, 1], [2, 1, 0]]",
+      "expected": [
+        "{\"a\":0,\"b\":null}",
+        "{\"a\":0,\"b\":1}",
+        "{\"a\":2,\"b\":1}"
+      ]
+    },
+    {
+      "program": ". as {$a, b: [$c, {$d}]} | [$a, $c, $d]",
+      "input": "{\"a\":1, \"b\":[2,{\"d\":3}]}",
+      "expected": [
+        "[1,2,3]"
+      ]
+    },
+    {
+      "program": ". as {$a, $b:[$c, $d]}| [$a, $b, $c, $d]",
+      "input": "{\"a\":1, \"b\":[2,{\"d\":3}]}",
+      "expected": [
+        "[1,[2,{\"d\":3}],2,{\"d\":3}]"
+      ]
+    },
+    {
+      "program": ".[] as {$a, $b, c: {$d, $e}} ?// {$a, $b, c: [{$d, $e}]} | {$a, $b, $d, $e}",
+      "input": "[{\"a\": 1, \"b\": 2, \"c\": {\"d\": 3, \"e\": 4}}, {\"a\": 1, \"b\": 2, \"c\": [{\"d\": 3, \"e\": 4}]}]",
+      "expected": [
+        "{\"a\":1,\"b\":2,\"d\":3,\"e\":4}",
+        "{\"a\":1,\"b\":2,\"d\":3,\"e\":4}"
+      ]
+    },
+    {
+      "program": ".[] as [$a] ?// [$b] | if $a != null then error(\"err: \\($a)\") else {$a,$b} end",
+      "input": "[[3]]",
+      "expected": [
+        "{\"a\":null,\"b\":3}"
+      ]
+    },
+    {
+      "program": "\"The input was \\(.), which is one less than \\(.+1)\"",
+      "input": "42",
+      "expected": [
+        "\"The input was 42, which is one less than 43\""
+      ]
+    },
+    {
+      "program": "test(\"foo\")",
+      "input": "\"foo\"",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": ".[] | test(\"a b c # spaces are ignored\"; \"ix\")",
+      "input": "[\"xabcd\", \"ABC\"]",
+      "expected": [
+        "true",
+        "true"
+      ]
+    },
+    {
+      "program": "match(\"(abc)+\"; \"g\")",
+      "input": "\"abc abc\"",
+      "expected": [
+        "{\"offset\": 0, \"length\": 3, \"string\": \"abc\", \"captures\": [{\"offset\": 0, \"length\": 3, \"string\": \"abc\", \"name\": null}]}",
+        "{\"offset\": 4, \"length\": 3, \"string\": \"abc\", \"captures\": [{\"offset\": 4, \"length\": 3, \"string\": \"abc\", \"name\": null}]}"
+      ]
+    },
+    {
+      "program": "match(\"foo\")",
+      "input": "\"foo bar foo\"",
+      "expected": [
+        "{\"offset\": 0, \"length\": 3, \"string\": \"foo\", \"captures\": []}"
+      ]
+    },
+    {
+      "program": "match([\"foo\", \"ig\"])",
+      "input": "\"foo bar FOO\"",
+      "expected": [
+        "{\"offset\": 0, \"length\": 3, \"string\": \"foo\", \"captures\": []}",
+        "{\"offset\": 8, \"length\": 3, \"string\": \"FOO\", \"captures\": []}"
+      ]
+    },
+    {
+      "program": "match(\"foo (?<bar123>bar)? foo\"; \"ig\")",
+      "input": "\"foo bar foo foo  foo\"",
+      "expected": [
+        "{\"offset\": 0, \"length\": 11, \"string\": \"foo bar foo\", \"captures\": [{\"offset\": 4, \"length\": 3, \"string\": \"bar\", \"name\": \"bar123\"}]}",
+        "{\"offset\": 12, \"length\": 8, \"string\": \"foo  foo\", \"captures\": [{\"offset\": -1, \"length\": 0, \"string\": null, \"name\": \"bar123\"}]}"
+      ]
+    },
+    {
+      "program": "[ match(\".\"; \"g\")] | length",
+      "input": "\"abc\"",
+      "expected": [
+        "3"
+      ]
+    },
+    {
+      "program": "capture(\"(?<a>[a-z]+)-(?<n>[0-9]+)\")",
+      "input": "\"xyzzy-14\"",
+      "expected": [
+        "{ \"a\": \"xyzzy\", \"n\": \"14\" }"
+      ]
+    },
+    {
+      "program": "scan(\"c\")",
+      "input": "\"abcdefabc\"",
+      "expected": [
+        "\"c\"",
+        "\"c\""
+      ]
+    },
+    {
+      "program": "split(\", *\"; null)",
+      "input": "\"ab,cd, ef\"",
+      "expected": [
+        "[\"ab\",\"cd\",\"ef\"]"
+      ]
+    },
+    {
+      "program": "[splits(\", *\"; null)]",
+      "input": "\"ab,cd,   ef, gh\"",
+      "expected": [
+        "[\"ab\",\"cd\",\"ef\",\"gh\"]"
+      ]
+    },
+    {
+      "program": "sub(\"[^a-z]*(?<x>[a-z]+)\"; \"Z\\(.x)\"; \"g\")",
+      "input": "\"123abc456def\"",
+      "expected": [
+        "\"ZabcZdef\""
+      ]
+    },
+    {
+      "program": "[sub(\"(?<a>.)\"; \"\\(.a|ascii_upcase)\", \"\\(.a|ascii_downcase)\")]",
+      "input": "\"aB\"",
+      "expected": [
+        "[\"AB\",\"aB\"]"
+      ]
+    },
+    {
+      "program": "gsub(\"(?<x>.)[^a]*\"; \"+\\(.x)-\")",
+      "input": "\"Abcabc\"",
+      "expected": [
+        "\"+A-+a-\""
+      ]
+    },
+    {
+      "program": "[gsub(\"p\"; \"a\", \"b\")]",
+      "input": "\"p\"",
+      "expected": [
+        "[\"a\",\"b\"]"
+      ]
+    },
+    {
+      "program": "[1|truncate_stream([[0],1],[[1,0],2],[[1,0]],[[1]])]",
+      "input": "1",
+      "expected": [
+        "[[[0],2],[[0]]]"
+      ]
+    },
+    {
+      "program": "fromstream(1|truncate_stream([[0],1],[[1,0],2],[[1,0]],[[1]]))",
+      "input": "null",
+      "expected": [
+        "[2]"
+      ]
+    },
+    {
+      "program": ". as $dot|fromstream($dot|tostream)|.==$dot",
+      "input": "[0,[1,{\"a\":1},{\"b\":2}]]",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": "[tostream]",
+      "input": "{\"a\":[1,2]}",
+      "expected": [
+        "[[[\"a\",0],1],[[\"a\",1],2],[[\"a\",1]],[[\"a\"]]]"
+      ]
+    },
+    {
+      "program": "map(abs)",
+      "input": "[-10, -1.1, -1e-1]",
+      "expected": [
+        "[10,1.1,0.1]"
+      ]
+    },
+    {
+      "program": ".[] | toarray",
+      "input": "[1, [2]]",
+      "expected": [
+        "[1]",
+        "[2]"
+      ]
+    },
+    {
+      "program": "trim, ltrim, rtrim",
+      "input": "\"  abc  \"",
+      "expected": [
+        "\"abc\"",
+        "\"abc  \"",
+        "\"  abc\""
+      ]
+    },
+    {
+      "program": "[limit(0; 1,2)]",
+      "input": "null",
+      "expected": [
+        "[]"
+      ]
+    },
+    {
+      "program": "label $f | range(10) | ., (select(. == 5) | break $f)",
+      "input": "null",
+      "expected": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ]
+    },
+    {
+      "program": "if . == 0 then \"zero\" elif . == 1 then \"one\" else \"many\" end",
+      "input": "2",
+      "expected": [
+        "\"many\""
+      ]
+    },
+    {
+      "program": "[.[] | if . then \"yes\" end]",
+      "input": "[true, false]",
+      "expected": [
+        "[\"yes\", false]"
+      ]
+    },
+    {
+      "program": "try error(null) catch .",
+      "input": "null",
+      "expected": [
+        "null"
+      ]
+    },
+    {
+      "program": "getpath([\"a\",0,\"b\"])",
+      "input": "null",
+      "expected": [
+        "null"
+      ]
+    },
+    {
+      "program": "\"\\u00e9\" | @uri",
+      "input": "null",
+      "expected": [
+        "\"%C3%A9\""
+      ]
+    },
+    {
+      "program": ".[1][0] = 5",
+      "input": "[1,[2]]",
+      "expected": [
+        "[1,[5]]"
+      ]
+    },
+    {
+      "program": "del(.[] | select(. == 2))",
+      "input": "[1,2,3,2]",
+      "expected": [
+        "[1,3]"
+      ]
+    },
+    {
+      "program": "to_entries | map(select(.value > 1)) | from_entries",
+      "input": "{\"a\":1,\"b\":2}",
+      "expected": [
+        "{\"b\":2}"
+      ]
+    },
+    {
+      "program": "1 as $x | 2 as $y | [$x,$y,$__loc__]",
+      "input": "null",
+      "expected": [
+        "[1,2,{\"file\":\"<stdin>\",\"line\":1}]"
+      ]
+    },
+    {
+      "program": "[paths]",
+      "input": "{\"a\":{\"b\":1}}",
+      "expected": [
+        "[[\"a\"],[\"a\",\"b\"]]"
+      ]
+    },
+    {
+      "program": "[leaf_paths]",
+      "input": "{\"a\":{\"b\":1},\"c\":[2]}",
+      "expected": [
+        "[[\"a\",\"b\"],[\"c\",0]]"
+      ]
+    },
+    {
+      "program": ".a.b.c = 1",
+      "input": "{}",
+      "expected": [
+        "{\"a\":{\"b\":{\"c\":1}}}"
+      ]
+    },
+    {
+      "program": ".[1:]",
+      "input": "\"abc\"",
+      "expected": [
+        "\"bc\""
+      ]
+    },
+    {
+      "program": "try ({} - 1) catch .",
+      "input": "null",
+      "expected": [
+        "\"object ({}) and number (1) cannot be subtracted\""
+      ]
+    },
+    {
+      "program": "try (1 / 0) catch .",
+      "input": "null",
+      "expected": [
+        "\"number (1) and number (0) cannot be divided because the divisor is zero\""
+      ]
+    },
+    {
+      "program": "\"x\" * 0",
+      "input": "null",
+      "expected": [
+        "null"
+      ]
+    },
+    {
+      "program": "\"ab\" * 3",
+      "input": "null",
+      "expected": [
+        "\"ababab\""
+      ]
+    },
+    {
+      "program": ".\"a-b\", .[\"a-b\"]",
+      "input": "{\"a-b\":1}",
+      "expected": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "program": ".a[1:] = [\"x\"]",
+      "input": "{\"a\":[1,2,3]}",
+      "expected": [
+        "{\"a\":[1,\"x\"]}"
+      ]
+    },
+    {
+      "program": "[range(5)] | del(.[1:3])",
+      "input": "null",
+      "expected": [
+        "[0,3,4]"
+      ]
+    },
+    {
+      "program": "$ARGS",
+      "input": "null",
+      "expected": [
+        "{\"positional\":[],\"named\":{}}"
+      ]
+    },
+    {
+      "program": "@sh",
+      "input": "[\"a b\", 1]",
+      "expected": [
+        "\"'a b' 1\""
+      ]
+    },
+    {
+      "program": "keys_unsorted",
+      "input": "{\"b\":1,\"a\":2,\"10\":3,\"2\":4}",
+      "expected": [
+        "[\"b\",\"a\",\"10\",\"2\"]"
+      ]
+    },
+    {
+      "program": "{\"b\":1,\"a\":2,\"10\":3}",
+      "input": "null",
+      "expected": [
+        "{\"b\":1,\"a\":2,\"10\":3}"
+      ]
+    },
+    {
+      "program": "[.[] | {a: .}] | map(.a) | add",
+      "input": "[1,2,3]",
+      "expected": [
+        "6"
+      ]
+    },
+    {
+      "program": "{a:(1,2), b:(3,4)}",
+      "input": "null",
+      "expected": [
+        "{\"a\":1,\"b\":3}",
+        "{\"a\":1,\"b\":4}",
+        "{\"a\":2,\"b\":3}",
+        "{\"a\":2,\"b\":4}"
+      ]
+    },
+    {
+      "program": "[(1,2) * (3,4)]",
+      "input": "null",
+      "expected": [
+        "[3,6,4,8]"
+      ]
+    },
+    {
+      "program": "\"\\(1,2)-\\(3,4)\"",
+      "input": "null",
+      "expected": [
+        "\"1-3\"",
+        "\"2-3\"",
+        "\"1-4\"",
+        "\"2-4\""
+      ]
+    },
+    {
+      "program": ".. |= (if type == \"number\" then .+1 else . end)",
+      "input": "[1,[2]]",
+      "expected": [
+        "[2,[3]]"
+      ]
+    },
+    {
+      "program": "[.[] | numbers] | min_by(.) , max_by(.)",
+      "input": "[3,1,2]",
+      "expected": [
+        "1",
+        "3"
+      ]
+    },
+    {
+      "program": "$ENV.HOME, env.HOME",
+      "input": "null",
+      "expected": [
+        "\"/home/ubuntu\"",
+        "\"/home/ubuntu\""
+      ]
+    },
+    {
+      "program": "input_filename",
+      "input": "null",
+      "expected": [
+        "null"
+      ]
+    },
+    {
+      "program": "[splits(\"a\")]",
+      "input": "\"banana\"",
+      "expected": [
+        "[\"b\",\"n\",\"n\",\"\"]"
+      ]
+    },
+    {
+      "program": "ascii",
+      "input": "65",
+      "expected": [
+        "\"A\""
+      ]
+    },
+    {
+      "program": "isvalid(error)",
+      "input": "null",
+      "expected": [
+        "false"
+      ]
+    },
+    {
+      "program": "@json \"v=\\(.)\"",
+      "input": "[1,\"x\"]",
+      "expected": [
+        "\"v=[1,\\\"x\\\"]\""
+      ]
+    },
+    {
+      "program": "@text \"\\(.)\"",
+      "input": "{\"a\":1}",
+      "expected": [
+        "\"{\\\"a\\\":1}\""
+      ]
+    },
+    {
+      "program": "[.[] | round]",
+      "input": "[1.5, -1.5, 2.4]",
+      "expected": [
+        "[2,-2,2]"
+      ]
+    },
+    {
+      "program": ".[0] | tostring",
+      "input": "[1e1000]",
+      "expected": [
+        "\"1.7976931348623157e+308\""
+      ]
+    },
+    {
+      "program": "1e-7, 100000000000000000000, 3.0, -0",
+      "input": "null",
+      "expected": [
+        "1e-07",
+        "100000000000000000000",
+        "3",
+        "-0"
+      ]
+    },
+    {
+      "program": "[.[] | type]",
+      "input": "[null]",
+      "expected": [
+        "[\"null\"]"
+      ]
+    },
+    {
+      "program": "group_by(.a) | map(length)",
+      "input": "[{\"a\":2},{\"a\":1},{\"a\":2}]",
+      "expected": [
+        "[1,2]"
+      ]
+    },
+    {
+      "program": "INDEX(.id)",
+      "input": "[{\"id\":1,\"v\":\"a\"},{\"id\":2,\"v\":\"b\"}]",
+      "expected": [
+        "{\"1\":{\"id\":1,\"v\":\"a\"},\"2\":{\"id\":2,\"v\":\"b\"}}"
+      ]
+    },
+    {
+      "program": "IN(2, 3)",
+      "input": "2",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": "any(.[]; . > 2)",
+      "input": "[1,2,3]",
+      "expected": [
+        "true"
+      ]
+    },
+    {
+      "program": "all(.[]; . > 2)",
+      "input": "[1,2,3]",
+      "expected": [
+        "false"
+      ]
+    },
+    {
+      "program": "first, last",
+      "input": "[]",
+      "expected": [
+        "null",
+        "null"
+      ]
+    },
+    {
+      "program": "splits(\"x\") | length",
+      "input": "\"axbxc\"",
+      "expected": [
+        "1",
+        "1",
+        "1"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "program": ".a",
+      "input": "1",
+      "message": "Cannot index number with \"a\""
+    },
+    {
+      "program": ".[0]",
+      "input": "{}",
+      "message": "Cannot index object with number"
+    },
+    {
+      "program": ".[]",
+      "input": "5",
+      "message": "Cannot iterate over number (5)"
+    },
+    {
+      "program": ".[]",
+      "input": "null",
+      "message": "Cannot iterate over null"
+    },
+    {
+      "program": "{} + 1",
+      "input": "null",
+      "message": "object ({}) and number (1) cannot be added"
+    },
+    {
+      "program": "length",
+      "input": "true",
+      "message": "boolean (true) has no length"
+    },
+    {
+      "program": "keys",
+      "input": "1",
+      "message": "number (1) has no keys"
+    },
+    {
+      "program": "\"abc\" | test(1)",
+      "input": "null",
+      "message": "number (1) cannot be matched, as it is not a string"
+    },
+    {
+      "program": ".a = 1",
+      "input": "[]",
+      "message": "Cannot index array with \"a\""
+    },
+    {
+      "program": "path(1)",
+      "input": "null",
+      "message": "Invalid path expression with result 1"
+    },
+    {
+      "program": "tonumber",
+      "input": "\"abc\"",
+      "message": "Cannot parse 'abc' as JSON"
+    },
+    {
+      "program": "\"very long string value\" | .[]",
+      "input": "null",
+      "message": "Cannot iterate over string (\"very long ...)"
+    }
+  ]
+}
