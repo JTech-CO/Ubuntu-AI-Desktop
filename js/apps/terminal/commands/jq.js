@@ -268,7 +268,7 @@ BUILTIN OPERATORS AND FUNCTIONS
        del getpath setpath to_entries from_entries with_entries add any all
        flatten range floor sqrt pow log tostring tonumber type
        sort sort_by group_by unique unique_by min max min_by max_by
-       reverse contains inside startswith endswith ltrimstr rtrimstr trim
+       reverse contains inside startswith endswith ltrimstr rtrimstr
        explode implode split join ascii_downcase ascii_upcase
        test match capture scan splits sub gsub  recurse env $ENV
        limit first last nth until while repeat input inputs debug

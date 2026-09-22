@@ -45,6 +45,10 @@ test('jq compile errors', () => {
     ['foo', 'foo/0 is not defined'],
     ['$x', '$x is not defined'],
     ['@nope', 'nope is not a valid format'],
+    // not in the jq Ubuntu 24.04 ships (later additions, or removed)
+    ['leaf_paths', 'leaf_paths/0 is not defined'],
+    ['toarray', 'toarray/0 is not defined'],
+    ['trim', 'trim/0 is not defined'],
   ]) {
     assert.throws(() => J.compile(prog, ['ARGS']), { message: msg }, prog);
   }

@@ -1314,8 +1314,8 @@ function binop(op, a, b) {
       if ((typeof a === 'string' && typeof b === 'number') || (typeof a === 'number' && typeof b === 'string')) {
         const s = typeof a === 'string' ? a : b;
         const n = typeof a === 'number' ? a : b;
-        if (!(n > 0)) return null;
-        return s.repeat(Math.max(1, Math.ceil(n)));
+        // jq 1.7 repeats the string int(n) times, so "x" * 0 is "".
+        return n > 0 ? s.repeat(Math.min(Math.trunc(n), 2 ** 28 / Math.max(1, s.length))) : '';
       }
       if (isObj(a) && isObj(b)) return deepMerge(a, b);
       throw new JqError(`${typeName(a)} (${trunc(a)}) and ${typeName(b)} (${trunc(b)}) cannot be multiplied`);
@@ -1739,13 +1739,19 @@ class Runtime {
 
   *assign(node, v, env) {
     if (node.op === '|=') {
+      // jq 1.7's _modify: the first output replaces the value; paths whose
+      // update produced nothing are deleted together at the end, so
+      // `.[] |= empty` empties an array instead of skipping every other item.
       let out = v;
+      const doomed = [];
       for (const path of this.paths(node.l, v, env)) {
         let first;
         let got = false;
         for (const x of this.vals(node.r, getpath(out, path), env)) { first = x; got = true; break; }
-        out = got ? setpath(out, path, first) : delpaths(out, [path]);
+        if (got) out = setpath(out, path, first);
+        else doomed.push(path);
       }
+      if (doomed.length) out = delpaths(out, doomed);
       yield [out, null];
       return;
     }
@@ -2067,9 +2073,6 @@ defv('endswith', 1, (v, x) => {
   if (typeof v !== 'string' || typeof x !== 'string') throw new JqError('endswith() requires string inputs');
   return v.endsWith(x);
 });
-defv('trim', 0, (v) => needStr(v, 'trim input must be a string').replace(/^\s+|\s+$/g, ''));
-defv('ltrim', 0, (v) => needStr(v, 'trim input must be a string').replace(/^\s+/, ''));
-defv('rtrim', 0, (v) => needStr(v, 'trim input must be a string').replace(/\s+$/, ''));
 defv('split', 1, (v, sep) => {
   if (typeof v !== 'string' || typeof sep !== 'string') throw new JqError('split input and separator must be strings');
   return splitString(v, sep);
@@ -2232,7 +2235,7 @@ function compileRegex(re, flags) {
   for (const f of flags || '') {
     if (f === 'g') global = true;
     else if (f === 'i') js += 'i';
-    else if (f === 'x') src = src.replace(/\\#/g, ' ').replace(/#.*$/gm, '').replace(/\s+/g, '').replace(/ /g, '\\#');
+    else if (f === 'x') src = src.replace(/\\#/g, '\u0000').replace(/#.*$/gm, '').replace(/\s+/g, '').replace(/\u0000/g, '\\#');
     else if (f === 's' || f === 'p') { if (!js.includes('s')) js += 's'; }
     else if (f === 'n') skipEmpty = true;
     else if (f === 'l') { /* longest match: not applicable */ }
@@ -2535,7 +2538,6 @@ def with_entries(f): to_entries | map(f) | from_entries;
 def del(f): delpaths([path(f)]);
 def paths: path(..) | select(length > 0);
 def paths(node_filter): . as $dot | paths | select(. as $p | $dot | getpath($p) | node_filter);
-def leaf_paths: paths(scalars);
 def any: reduce .[] as $x (false; . or $x);
 def all: reduce .[] as $x (true; . and $x);
 def any(f): reduce (.[] | f) as $x (false; . or $x);
@@ -2569,7 +2571,6 @@ def fromstream(f): { x: null, e: false } as $init | foreach f as $i ($init; if .
 def truncate_stream(stream): . as $n | null | stream | . as $input | if (.[0] | length) > $n then setpath([0]; .[0][$n:]) else empty end;
 def pick(pathexps): . as $top | reduce path(pathexps) as $p (null; setpath($p; $top | getpath($p)));
 def debug(msg): (msg | debug | empty), .;
-def toarray: if type == "array" then . else [.] end;
 def splits($re): splits($re; null);
 def splits($re; flags): split($re; flags) | .[];
 def capture(re): capture(re; null);
@@ -2580,8 +2581,6 @@ def sub(re; str): sub(re; str; "");
 def gsub(re; str): sub(re; str; "g");
 def gsub(re; str; flags): sub(re; str; flags + "g");
 def join($x): reduce .[] as $i (null; (if . == null then "" else . + $x end) + ($i | if . == null then "" elif type == "string" then . else tojson end)) // "";
-def ascii: [.] | implode;
-def isvalid(f): try (f | true) catch false;
 def halt_error: halt_error(5);
 `;
 
