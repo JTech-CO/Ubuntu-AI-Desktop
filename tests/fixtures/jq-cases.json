@@ -1656,7 +1656,7 @@
       "program": "\"x\" * -1",
       "input": "null",
       "expected": [
-        "\"\""
+        "null"
       ]
     },
     {

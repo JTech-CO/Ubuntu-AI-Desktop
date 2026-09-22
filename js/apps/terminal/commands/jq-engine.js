@@ -1314,8 +1314,9 @@ function binop(op, a, b) {
       if ((typeof a === 'string' && typeof b === 'number') || (typeof a === 'number' && typeof b === 'string')) {
         const s = typeof a === 'string' ? a : b;
         const n = typeof a === 'number' ? a : b;
-        // jq 1.7 repeats the string int(n) times, so "x" * 0 is "".
-        return n > 0 ? s.repeat(Math.min(Math.trunc(n), 2 ** 28 / Math.max(1, s.length))) : '';
+        // jq 1.7 repeats the string int(n) times ("x" * 0 is ""); a negative n gives null.
+        if (n < 0 || Number.isNaN(n)) return null;
+        return s.repeat(Math.min(Math.trunc(n), 2 ** 28 / Math.max(1, s.length)));
       }
       if (isObj(a) && isObj(b)) return deepMerge(a, b);
       throw new JqError(`${typeName(a)} (${trunc(a)}) and ${typeName(b)} (${trunc(b)}) cannot be multiplied`);

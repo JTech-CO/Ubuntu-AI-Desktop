@@ -79,7 +79,7 @@ test('jq the command', async () => {
   assert.equal(r.stdout, '[127]\n');
   await sh('sudo apt install -y jq', ['ubuntu']);
   assert.equal((await sh('which jq')).stdout, '/usr/bin/jq\n');
-  assert.equal((await sh('jq --version')).stdout, 'jq-1.7.1\n');
+  assert.equal((await sh('jq --version')).stdout, 'jq-1.7\n', 'what Ubuntu\'s jq 1.7.1 package prints');
 
   r = await sh(`echo '{"a":1,"b":[1,2]}' | jq .`);
   assert.equal(plain(r.stdout), '{\n  "a": 1,\n  "b": [\n    1,\n    2\n  ]\n}\n');

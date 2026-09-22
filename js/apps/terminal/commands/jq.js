@@ -292,7 +292,8 @@ EXIT STATUS
     const o = parseArgs(ctx.argv);
     if (o.error) return fail(o.error, 2);
     if (o.help) return ok(USAGE);
-    if (o.version) return ok('jq-1.7.1\n');
+    // Ubuntu's jq 1.7.1 package (1.7.1-3ubuntu0.24.04.2) reports itself as "jq-1.7".
+    if (o.version) return ok('jq-1.7\n');
 
     let program = o.filter;
     if (o.fromFile !== null) {

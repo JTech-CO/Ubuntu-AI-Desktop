@@ -79,7 +79,7 @@ const CATALOGUE = [
   ['init-system-helpers', '1.66ubuntu1', 'admin', 39, 132, 'helper tools for all init systems', 'perl-base', 'ia', 'invoke-rc.d service update-rc.d deb-systemd-helper'],
   ['iproute2', '6.1.0-1ubuntu6', 'net', 1120, 3554, 'networking and traffic control tools', 'libbpf1 libc6 libelf1t64 libmnl0 libxtables12', 'i', 'ip ss bridge tc rtacct'],
   ['iputils-ping', '3:20240117-1build1', 'net', 45, 130, 'Tools to test the reachability of network hosts', 'libcap2-bin libc6 libidn2-0', 'i', 'ping ping4 ping6'],
-  ['jq', '1.7.1-3build1', 'utils', 76, 202, 'lightweight and flexible command-line JSON processor', 'libjq1 libc6', '', 'jq'],
+  ['jq', '1.7.1-3ubuntu0.24.04.2', 'utils', 76, 202, 'lightweight and flexible command-line JSON processor', 'libjq1 libc6', '', 'jq'],
   ['less', '590-2ubuntu2.1', 'text', 143, 353, 'pager program similar to more', 'libc6 libtinfo6 libpcre2-8-0', 'i', 'less lessecho lesskey lessfile lesspipe'],
   ['libc-bin', '2.39-0ubuntu8.3', 'libs', 671, 1471, 'GNU C Library: Binaries', '', 'i', 'ldd ldconfig getconf locale iconv'],
   ['libc6', '2.39-0ubuntu8.3', 'libs', 2896, 12690, 'GNU C Library: Shared libraries', 'libgcc-s1', 'i', ''],
