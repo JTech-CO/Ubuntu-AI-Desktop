@@ -363,6 +363,9 @@ function createTab(win, opts = {}) {
 
 async function runLine(win, tab, line) {
   tab.controller = new AbortController();
+  // A line typed in the first moments after boot must not race the command
+  // table: until it is registered, even `ls` would be "command not found".
+  await commandsReady;
   activateSession(tab.session);
   try {
     await execute(line, {

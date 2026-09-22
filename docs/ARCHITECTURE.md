@@ -229,14 +229,17 @@ export const fs = {
   stat(p),                         // -> { path, name, type, mode, owner, group, size, mtime, isDir, isFile, isLink }  (follows links)
   lstat(p),                        // -> same, does not follow links
   readdir(p, { withStats = false } = {}),  // -> string[] | StatObject[]
-  readFile(p),                     // -> string
+  readFile(p),                     // -> string (a byte string when stat(p).binary)
+  readBytes(p),                    // -> Uint8Array (text files encoded as UTF-8)
   readlink(p),                     // -> string
   isDir(p), isFile(p),
   du(p),                           // -> total bytes
   glob(pattern, cwd),              // -> string[] absolute paths; supports * ? [abc] and **
 
   // --- write (each emits bus 'fs:change' and schedules a persist) ---
-  writeFile(p, content, { append = false, create = true } = {}),
+  writeFile(p, content, { append = false, create = true, mode, binary = false } = {}),
+  writeBytes(p, bytes, opts),      // clean UTF-8 without NUL is stored as text, anything else as binary
+  utimes(p, mtimeMs),              // set a modification time (tar, gunzip); does not follow a final link
   mkdir(p, { parents = false } = {}),
   rmdir(p),
   unlink(p),
@@ -571,6 +574,12 @@ Must support:
 - Expansion: `$VAR`, `${VAR}`, `$?`, `~`, `~/`, globs `* ? [abc]`, `$(cmd)` substitution,
   brace-free is fine.
 - Operators: `|`, `>`, `>>`, `<`, `2>`, `&&`, `||`, `;`.
+- Here-strings `<<< word` and here-documents `<<DELIM` / `<<'DELIM'` (no expansion) /
+  `<<-DELIM` (leading tabs stripped). `needsContinuation()` returns `'heredoc'` until every
+  open delimiter line has arrived, so readline keeps showing PS2.
+- `#` starts a comment only at the start of a word, and runs to the end of that line.
+- Binary stdout (`{ binary: true }`) passes through pipes as a byte string and is written
+  to `>` targets as bytes; the next command sees `ctx.stdinBinary`.
 - Exit codes propagated to `$?`; `command not found` → 127 with the real Ubuntu message
   including the `Command 'x' not found, did you mean:` / `apt install` hint.
 - Aliases (`alias ll='ls -alF'` preloaded from `.bashrc`).
@@ -586,26 +595,40 @@ Must support:
   synopsis: 'ls [OPTION]... [FILE]...',
   description: 'List directory contents',
   man: '…full man-page body…',
-  async run(ctx),   // -> { stdout, stderr, code } | string (treated as stdout, code 0)
+  available(),      // optional: false hides the command (not found, absent from which/completion)
+  async run(ctx),   // -> { stdout, stderr, code, binary? } | string (treated as stdout, code 0)
 }
 ```
+
+`available()` is how a program that a fresh Ubuntu does not ship stays missing until
+`apt install`: `jq` returns `pkgdb.isInstalled('jq')`.
 
 `ctx` for a command:
 ```js
 { argv,          // string[] excluding the command name
   raw,           // original argument string
   stdin,         // string ('' when not piped)
+  stdinBinary,   // true when stdin is a byte string (gzip -c | …, < file.gz)
+  stdoutIsTTY,   // false when piped, redirected or captured — ls, jq colour and columns follow it
   env, fs, procs, users, metrics, gemini,
   cwd,           // convenience: env.cwd
   term,          // terminal instance: { write(text), writeLine(text), clear(), ask(prompt, {password}) -> Promise<string> }
   signal,        // AbortSignal, aborted on Ctrl+C
+  run(line, { stdin } = {}),  // run a command line in this session; -> { code, stdout, stderr }
 }
 ```
+
+Long-running interpreters (`awk`, `jq`) must yield to the event loop every few thousand
+steps so output streams and Ctrl+C can abort them; `awk` runs as a generator whose driver
+awaits the Promises it yields for `system()`, `cmd | getline` and output pipes.
 
 ### Required command coverage
 
 - **files**: `ls cd pwd mkdir rmdir rm cp mv touch ln cat tac head tail wc find tree du df stat file chmod chown realpath basename dirname`
-- **text**: `echo printf grep sed sort uniq cut tr rev tee diff nl less more`
+- **text**: `echo printf grep sed awk sort uniq cut tr rev tee diff nl less more`
+- **shell tools**: `env printenv expr xargs`
+- **archives**: `tar gzip gunzip zcat zip unzip` (byte formats in `archive-formats.js`, real-tool compatible)
+- **json**: `jq` (engine in `jq-engine.js`; gated on `apt install jq`)
 - **system**: `uname whoami id hostname hostnamectl uptime date cal free ps top kill pkill pidof env export unset alias unalias history which whereis type man help clear exit reboot poweroff shutdown lscpu lsblk lsusb neofetch fastfetch sudo su groups`
 - **net**: `ping ifconfig ip hostname -I netstat ss curl wget dig nslookup traceroute`
 - **pkg**: `apt apt-get apt-cache dpkg snap` — simulated with realistic progress output

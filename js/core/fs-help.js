@@ -75,7 +75,13 @@ Ubuntu 24.04 LTS(Noble Numbat) 데스크톱을 브라우저 안에서 통째로
       파이프라인 AST, 서브셸까지 있습니다.
       지원: |  >  >>  <  2>  2>&1  &&  ||  ;  후행 &
             $VAR  ${'${VAR}'}  ${'${VAR:-기본값}'}  $?  $(...)  백틱
-            *  ?  [abc]  ~  별칭  그리고 $?로 전파되는 종료 코드
+            *  ?  [abc]  ~  별칭  # 주석  그리고 $?로 전파되는 종료 코드
+            <<< "문자열" (here-string)
+            <<EOF … EOF (here-document — 구분자 줄이 올 때까지 > 로 이어 받음,
+            <<'EOF' 는 변수를 풀지 않고, <<-EOF 는 앞 탭을 지움)
+      바이너리도 파이프와 리다이렉션을 그대로 통과합니다.
+      tar czf - 폴더 | tar tzf - 나 gzip -c 파일 > 파일.gz 가 한 바이트도
+      잃지 않고, 만든 압축 파일은 진짜 컴퓨터의 tar·gzip·unzip 으로 열립니다.
 
   GNU 도구의 실제 출력 형식
       ls의 열 정렬, ps aux의 칼럼 폭, free -h의 자릿수, systemctl의
@@ -296,8 +302,8 @@ Ubuntu 24.04 LTS(Noble Numbat) 데스크톱을 브라우저 안에서 통째로
 5. 명령어 전체 목록
 ──────────────────────────────────────────────────────────────────
 
-외부 명령 176개와 셸 빌트인 24개, 모두 200개가 등록되어 있습니다.
-별칭까지 세면 터미널이 아는 이름은 212개입니다.
+외부 명령 189개와 셸 빌트인 24개, 모두 213개가 등록되어 있습니다.
+별칭까지 세면 터미널이 아는 이름은 227개입니다.
 살아 있는 목록은 help, 자세한 설명은 man <명령어> 로 볼 수 있습니다.
 
 
@@ -331,7 +337,7 @@ Ubuntu 24.04 LTS(Noble Numbat) 데스크톱을 브라우저 안에서 통째로
   readlink            심볼릭 링크가 가리키는 곳
   mktemp              임시 파일·디렉터리 만들기
 
-  텍스트 다루기 (23)
+  텍스트 다루기 (24)
   ──────────────────
   echo                인자를 그대로 출력 (-n -e)
   printf              C 스타일 서식 출력
@@ -339,6 +345,13 @@ Ubuntu 24.04 LTS(Noble Numbat) 데스크톱을 브라우저 안에서 통째로
   egrep               grep -E 와 같음
   fgrep               grep -F 와 같음 (고정 문자열)
   sed                 스트림 편집 (s/// d p, -i 제자리 수정)
+  awk                 패턴 처리 언어 — 우분투 기본인 mawk 1.3.4 방식
+                      (별칭: mawk, nawk). 필드 $1…$NF, BEGIN/END, 배열,
+                      함수, printf, getline, print > 파일, print | "명령"
+                        예) awk -F: '{print $1}' /etc/passwd
+                            awk '{s+=$2} END {print s}' 파일
+                            awk '!seen[$0]++'   (중복 줄 없애기)
+                        문자열 길이는 글자 단위로 셉니다(진짜 mawk 는 바이트).
   sort                정렬 (-n -r -k -u)
   uniq                이어진 중복 줄 처리 (-c -d)
   cut                 열 잘라내기 (-d -f -c)
@@ -490,6 +503,44 @@ Ubuntu 24.04 LTS(Noble Numbat) 데스크톱을 브라우저 안에서 통째로
   firefox             브라우저 열기
   eog                 이미지 뷰어 열기 (별칭: gnome-image-viewer, eom)
   gnome-screenshot    화면 캡처 (별칭: import)
+
+  셸 도구 (5)
+  ───────────
+  env                 환경을 바꿔 명령 실행, 인자 없으면 환경 전체 출력
+                      (env FOO=1 명령, env -u 이름, env -i)
+  printenv            환경 변수 출력 (printenv HOME)
+  expr                식 계산 — expr 3 \\* 4, expr "$a" + 1,
+                      expr 문자열 : 정규식, length, substr, index
+  xargs               입력을 인자로 바꿔 명령 실행
+                      (-n -L -I{} -0 -d -t -r -a)
+                        예) find . -name '*.txt' | xargs grep hello
+  clear               화면 지우기 (Ctrl+L 과 같음)
+
+  압축과 묶음 (6)
+  ───────────────
+  tar                 파일 묶기·풀기 (c x t r, z v f C, --exclude,
+                      --strip-components). GNU 형식이라 진짜 tar 로 열립니다.
+                        예) tar czvf 백업.tar.gz 폴더/
+                            tar xzf 백업.tar.gz -C /tmp
+                        bzip2(-j)·xz(-J)·zstd 는 구현되지 않았다고 알려 줍니다.
+  gzip                gzip 압축 (-c -d -k -f -l -t -v -r -S)
+  gunzip              gzip -d 와 같음
+  zcat                gzip -dc 와 같음 (-f 면 압축 안 된 파일도 그대로)
+  zip                 zip 만들기 (-r -q -j -m -d -D -y -0, 이미 있으면 갱신)
+  unzip               zip 풀기 (-l 목록, -t 검사, -p 파이프, -d 폴더,
+                      -o 덮어쓰기, -n 건너뛰기; 이미 있으면 물어봄)
+
+  JSON (1)
+  ────────
+  jq                  JSON 처리기 (jq 1.7.1). 진짜 우분투처럼 처음에는
+                      설치되어 있지 않습니다. sudo apt install jq 로 설치하면
+                      /usr/bin/jq 가 생기고 쓸 수 있습니다.
+                        예) cat 데이터.json | jq '.items[] | {name, id}'
+                            jq -r '.[].name' 파일.json
+                            echo '{"a":1}' | jq '.a += 1'
+                        -r -c -n -s -R -e -S -j --arg --argjson --tab
+                        --indent --stream --args 를 지원합니다. 한 번에
+                        15초를 넘기는 필터는 에뮬레이터가 멈춥니다.
 
   그 밖 (18)
   ──────────

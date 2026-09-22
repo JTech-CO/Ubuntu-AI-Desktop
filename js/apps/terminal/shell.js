@@ -82,22 +82,40 @@ export function registerCommand(cmd) {
 }
 
 /**
+ * A command may declare `available()`: jq, for one, is not part of a fresh
+ * Ubuntu install, so until `sudo apt install jq` it answers "command not
+ * found" and is absent from `which`, `type` and completion.
+ * @param {object|undefined} cmd
+ * @returns {boolean}
+ */
+function isAvailable(cmd) {
+  if (!cmd) return false;
+  if (typeof cmd.available !== 'function') return true;
+  try {
+    return cmd.available() !== false;
+  } catch {
+    return true;
+  }
+}
+
+/**
  * @param {string} name
  * @returns {object|null}
  */
 export function getCommand(name) {
   if (typeof name !== 'string') return null;
-  return registry.get(name) || null;
+  const cmd = registry.get(name);
+  return isAvailable(cmd) ? cmd : null;
 }
 
 /** @param {string} name @returns {boolean} */
 export function hasCommand(name) {
-  return registry.has(String(name));
+  return isAvailable(registry.get(String(name)));
 }
 
 /** @returns {string[]} every invocable external name, sorted — for completion */
 export function commandNames() {
-  return Array.from(registry.keys()).sort();
+  return Array.from(registry.keys()).filter((n) => isAvailable(registry.get(n))).sort();
 }
 
 /** @returns {object[]} unique command objects, sorted by primary name */
@@ -215,15 +233,54 @@ export function tokenize(line) {
     else parts.push({ v, q });
   };
 
+  /** `<<` operators whose body starts after the next newline. */
+  let heredocs = [];
+
   const flushWord = (endPos) => {
     if (!hasWord) return;
-    tokens.push(makeWord(parts, src.slice(wordStart, endPos), wordStart, endPos));
+    const word = makeWord(parts, src.slice(wordStart, endPos), wordStart, endPos);
+    tokens.push(word);
+    // The first word after `<<` is the delimiter; quoting any of it turns expansion off.
+    const waiting = heredocs.find((h) => h.delim === null);
+    if (waiting) {
+      waiting.delim = word.text;
+      waiting.op.quoted = word.quoted;
+    }
     parts = [];
     hasWord = false;
   };
 
   const pushOp = (op, extra, pos, end) => {
-    tokens.push({ type: 'op', op, raw: src.slice(pos, end), pos, end, ...extra });
+    const tok = { type: 'op', op, raw: src.slice(pos, end), pos, end, ...extra };
+    tokens.push(tok);
+    return tok;
+  };
+
+  /**
+   * Read the bodies of pending here-documents starting at `from` (the first
+   * character after a newline). Returns where scanning resumes.
+   */
+  const readHeredocs = (from) => {
+    let p = from;
+    for (const h of heredocs) {
+      if (h.delim === null) continue;
+      const lines = [];
+      let found = false;
+      while (p < src.length) {
+        const nl = src.indexOf('\n', p);
+        const end = nl < 0 ? src.length : nl;
+        let text = src.slice(p, end);
+        if (h.op.strip) text = text.replace(/^\t+/, '');
+        p = nl < 0 ? src.length : nl + 1;
+        if (text === h.delim) { found = true; break; }
+        lines.push(text);
+      }
+      h.op.body = lines.length ? `${lines.join('\n')}\n` : '';
+      h.op.delim = h.delim;
+      if (!found) h.op.unterminated = true;
+    }
+    heredocs = [];
+    return p;
   };
 
   /** Take a pending all-digit word as an explicit file descriptor. */
@@ -240,14 +297,18 @@ export function tokenize(line) {
   while (i < src.length) {
     const c = src[i];
 
-    if (!hasWord && c === '#') break;                    /* comment to EOL */
+    if (!hasWord && c === '#') {                         /* comment to EOL */
+      const nl = src.indexOf('\n', i);
+      i = nl < 0 ? src.length : nl;
+      continue;
+    }
 
     if (IS_BLANK.test(c)) { flushWord(i); i += 1; continue; }
 
     if (c === '\n') {
       flushWord(i);
       pushOp(';', { newline: true }, i, i + 1);
-      i += 1;
+      i = heredocs.length ? readHeredocs(i + 1) : i + 1;
       continue;
     }
 
@@ -362,6 +423,19 @@ export function tokenize(line) {
       const fd = takeFd();
       const start = fd === null ? i : i - String(fd).length;
       flushWord(i);
+      if (src[i + 1] === '<' && src[i + 2] === '<') {
+        pushOp('<<<', { fd: fd === null ? 0 : fd }, start, i + 3);
+        i += 3;
+        continue;
+      }
+      if (src[i + 1] === '<') {
+        const strip = src[i + 2] === '-';
+        const len = strip ? 3 : 2;
+        const op = pushOp('<<', { fd: fd === null ? 0 : fd, strip, body: '' }, start, i + len);
+        heredocs.push({ op, delim: null });
+        i += len;
+        continue;
+      }
       if (src[i + 1] === '&' && /[0-9]/.test(src[i + 2] || '')) {
         let j = i + 2;
         let digits = '';
@@ -408,6 +482,8 @@ export function tokenize(line) {
   }
 
   flushWord(src.length);
+  // A here-document still open at the end of the input ends at EOF (bash warns).
+  if (heredocs.length) readHeredocs(src.length);
   return tokens;
 }
 
@@ -420,10 +496,63 @@ export function tokenize(line) {
 export function needsContinuation(line) {
   const src = typeof line === 'string' ? line : '';
   let i = 0;
+  /** Open here-documents: each needs its delimiter line before the command can run. */
+  let heredocs = [];
+  /** [start, end) of each comment, so a `|` inside one does not ask for more input. */
+  const comments = [];
   while (i < src.length) {
     const c = src[i];
+    if (c === '\n' && heredocs.length) {
+      let p = i + 1;
+      for (const h of heredocs) {
+        let found = false;
+        while (p < src.length) {
+          const nl = src.indexOf('\n', p);
+          const end = nl < 0 ? src.length : nl;
+          let text = src.slice(p, end);
+          if (h.strip) text = text.replace(/^\t+/, '');
+          p = nl < 0 ? src.length : nl + 1;
+          if (text === h.delim) { found = true; break; }
+        }
+        if (!found) return 'heredoc';
+      }
+      heredocs = [];
+      i = p;
+      continue;
+    }
+    if (c === '<' && src[i + 1] === '<' && src[i + 2] === '<') { i += 3; continue; }
+    if (c === '<' && src[i + 1] === '<') {
+      let j = i + 2;
+      const strip = src[j] === '-';
+      if (strip) j += 1;
+      while (src[j] === ' ' || src[j] === '\t') j += 1;
+      let delim = '';
+      while (j < src.length && !/[\s;|&<>()]/.test(src[j])) {
+        const q = src[j];
+        if (q === "'" || q === '"') {
+          const close = src.indexOf(q, j + 1);
+          if (close < 0) return q === "'" ? 'squote' : 'dquote';
+          delim += src.slice(j + 1, close);
+          j = close + 1;
+        } else if (q === '\\') {
+          delim += src[j + 1] || '';
+          j += 2;
+        } else {
+          delim += q;
+          j += 1;
+        }
+      }
+      if (delim !== '') heredocs.push({ delim, strip });
+      i = j;
+      continue;
+    }
     if (c === '\\') { if (i === src.length - 1) return 'backslash'; i += 2; continue; }
-    if (c === '#') { break; }
+    if (c === '#' && (i === 0 || /[\s;|&()]/.test(src[i - 1]))) {
+      const nl = src.indexOf('\n', i);
+      comments.push([i, nl < 0 ? src.length : nl]);
+      i = nl < 0 ? src.length : nl;
+      continue;
+    }
     if (c === "'") {
       let j = i + 1;
       while (j < src.length && src[j] !== "'") j += 1;
@@ -456,7 +585,10 @@ export function needsContinuation(line) {
     }
     i += 1;
   }
-  if (/(\|\||&&|\||;)\s*$/.test(src) && !/(\|\|\||&&&)\s*$/.test(src)) return 'operator';
+  if (heredocs.length) return 'heredoc';
+  let code = src;
+  for (const [a, b] of comments.reverse()) code = code.slice(0, a) + code.slice(b);
+  if (/(\|\||&&|\||;)\s*$/.test(code) && !/(\|\|\||&&&)\s*$/.test(code)) return 'operator';
   return '';
 }
 
@@ -464,13 +596,15 @@ export function needsContinuation(line) {
  * parser
  * ------------------------------------------------------------------ */
 
-const REDIR_OPS = new Set(['>', '>>', '<', '>&', '<&', '&>', '&>>']);
+const REDIR_OPS = new Set(['>', '>>', '<', '>&', '<&', '&>', '&>>', '<<', '<<<']);
 const REDIR_MODE = {
   '>': 'write',
   '>>': 'append',
   '<': 'read',
   '&>': 'both',
   '&>>': 'bothAppend',
+  '<<': 'heredoc',
+  '<<<': 'herestring',
 };
 
 function isAssignmentWord(token) {
@@ -530,7 +664,14 @@ export function parse(tokens) {
         if (!target || target.type !== 'word') fail(target);
         cmd.tokens.push(target);
         i += 1;
-        cmd.redirs.push({ fd: t.fd, mode: REDIR_MODE[t.op], targetFd: null, word: target });
+        const redir = { fd: t.fd, mode: REDIR_MODE[t.op], targetFd: null, word: target };
+        if (t.op === '<<') {
+          redir.body = t.body || '';
+          redir.quoted = t.quoted === true;
+          redir.delim = t.delim;
+          redir.unterminated = t.unterminated === true;
+        }
+        cmd.redirs.push(redir);
         continue;
       }
       break;
@@ -1089,6 +1230,46 @@ function globField(pattern, cwd) {
  * @param {object} sh
  * @returns {Promise<string[]>}
  */
+/**
+ * Expand an unquoted here-document body: parameters, command substitution
+ * and arithmetic, with `\$`, `` \` ``, `\\` and `\<newline>` handled as bash
+ * does. Quotes are ordinary characters and nothing is split or globbed.
+ * @param {string} body
+ * @param {object} sh
+ * @returns {Promise<string>}
+ */
+async function expandHeredoc(body, sh) {
+  let out = '';
+  let chunk = '';
+  const flush = async () => {
+    if (chunk === '') return;
+    for (const seg of await expandSegments(chunk, sh, true)) out += seg.s;
+    chunk = '';
+  };
+  for (let i = 0; i < body.length; i += 1) {
+    const c = body[i];
+    if (c === '\\' && i + 1 < body.length) {
+      const n = body[i + 1];
+      if (n === '$' || n === '`' || n === '\\') { await flush(); out += n; i += 1; continue; }
+      if (n === '\n') { i += 1; continue; }
+    }
+    // keep substitutions whole so a backslash inside one is theirs to interpret
+    if (c === '$' && (body[i + 1] === '(' || body[i + 1] === '{')) {
+      const end = scanBalanced(body, i + 1, body[i + 1], body[i + 1] === '(' ? ')' : '}');
+      if (end > 0) { chunk += body.slice(i, end); i = end - 1; continue; }
+    }
+    if (c === '`') {
+      const end = scanBacktick(body, i);
+      chunk += body.slice(i, end);
+      i = end - 1;
+      continue;
+    }
+    chunk += c;
+  }
+  await flush();
+  return out;
+}
+
 export async function expandWord(word, sh) {
   const parts = tildeExpand(word.parts, sh);
   /** @type {{s:string,quoted:boolean,split:boolean}[]} */
@@ -1194,6 +1375,8 @@ function makeShellCtx(ctx) {
     capture: ctx.capture === true,
     depth: ctx.depth || 0,
     onExit: typeof ctx.onExit === 'function' ? ctx.onExit : null,
+    /** Standard input for the first pipeline only, as a real stdin is read once. */
+    input: typeof ctx.stdin === 'string' ? ctx.stdin : '',
     stdout: '',
     stderr: '',
     exited: false,
@@ -1227,14 +1410,16 @@ function normalizeResult(res) {
     stdout: res.stdout === undefined || res.stdout === null ? '' : String(res.stdout),
     stderr: res.stderr === undefined || res.stderr === null ? '' : String(res.stderr),
     code: Number.isFinite(res.code) ? res.code | 0 : 0,
+    // stdout is a byte string (gzip -c, tar -cf -): `>` must store it as bytes.
+    binary: res.binary === true,
   };
 }
 
-function writeRedir(sh, redir, text) {
+function writeRedir(sh, redir, text, binary = false) {
   const target = path.resolve(sh.session.cwd, path.expandTilde(redir.target, sh.session.home));
   const append = redir.mode === 'append' || redir.mode === 'bothAppend';
   try {
-    fs.writeFile(target, text, { append });
+    fs.writeFile(target, text, { append, binary });
     return true;
   } catch (err) {
     emitErr(sh, `bash: ${redir.target}: ${fsPhrase(err)}\n`);
@@ -1245,13 +1430,15 @@ function writeRedir(sh, redir, text) {
 /**
  * Build the ctx object a command receives (ARCHITECTURE §17).
  */
-function makeCommandCtx(sh, name, argv, argText, stdin, cmdTerm, stdoutIsTTY) {
+function makeCommandCtx(sh, name, argv, argText, stdin, cmdTerm, stdoutIsTTY, stdinBinary) {
   const session = sh.session;
   return {
     name,
     argv,
     raw: argText,
     stdin,
+    /** True when `stdin` is a byte string (piped from gzip -c, or `< file.gz`). */
+    stdinBinary: stdinBinary === true,
     /**
      * True when this command's stdout goes straight to the terminal, false
      * when it is piped, redirected to a file, or captured by `$(...)`.
@@ -1280,13 +1467,17 @@ function makeCommandCtx(sh, name, argv, argText, stdin, cmdTerm, stdoutIsTTY) {
     signal: sh.signal,
     getCommand,
     commandNames,
-    /** Run another command line inside this session and capture its stdout. */
-    run: (line) => execute(line, {
+    /**
+     * Run another command line inside this session and capture its stdout.
+     * `opts.stdin` feeds the line's first pipeline (awk's `print | "sort"`).
+     */
+    run: (line, opts = {}) => execute(line, {
       session,
       term: sh.term,
       signal: sh.signal,
       capture: true,
       depth: (sh.depth || 0) + 1,
+      stdin: typeof opts.stdin === 'string' ? opts.stdin : '',
     }),
   };
 }
@@ -1310,6 +1501,19 @@ async function runSimple(cmd, sh, io) {
   const redirs = [];
   for (const r of cmd.redirs) {
     if (r.mode === 'dup') { redirs.push({ ...r, target: null }); continue; }
+    if (r.mode === 'heredoc') {
+      if (r.unterminated) {
+        emitErr(sh, `bash: warning: here-document delimited by end-of-file (wanted \`${r.delim}')\n`);
+      }
+      redirs.push({ ...r, target: null, content: r.quoted ? r.body : await expandHeredoc(r.body, sh) });
+      continue;
+    }
+    if (r.mode === 'herestring') {
+      // expanded like a word but never split or globbed; a newline is appended
+      const fields = await expandWord(r.word, sh);
+      redirs.push({ ...r, target: null, content: `${fields.join(' ')}\n` });
+      continue;
+    }
     const fields = await expandWord(r.word, sh);
     if (fields.length !== 1) {
       emitErr(sh, `bash: ${r.word.text}: ambiguous redirect\n`);
@@ -1328,7 +1532,8 @@ async function runSimple(cmd, sh, io) {
   }
 
   /* --- redirection plan ------------------------------------------ */
-  const inRedir = redirs.find((r) => r.mode === 'read');
+  // The last input redirection wins, as in bash.
+  const inRedir = redirs.filter((r) => r.mode === 'read' || r.mode === 'heredoc' || r.mode === 'herestring').pop();
   let outRedir = null;
   let errRedir = null;
   let mergeErrIntoOut = false;
@@ -1341,7 +1546,7 @@ async function runSimple(cmd, sh, io) {
       continue;
     }
     if (r.mode === 'both' || r.mode === 'bothAppend') { outRedir = r; errRedir = r; mergeErrIntoOut = false; continue; }
-    if (r.mode === 'read') continue;
+    if (r.mode === 'read' || r.mode === 'heredoc' || r.mode === 'herestring') continue;
     if (r.fd === 2) errRedir = r;
     else outRedir = r;
   }
@@ -1360,10 +1565,15 @@ async function runSimple(cmd, sh, io) {
 
   /* --- stdin ------------------------------------------------------ */
   let stdin = io.stdin || '';
-  if (inRedir) {
+  let stdinBinary = io.stdinBinary === true;
+  if (inRedir && inRedir.content !== undefined) {
+    stdin = inRedir.content;
+    stdinBinary = false;
+  } else if (inRedir) {
     const p = path.resolve(session.cwd, path.expandTilde(inRedir.target, session.home));
     try {
       stdin = fs.readFile(p);
+      stdinBinary = fs.stat(p).binary === true;
     } catch (err) {
       emitErr(sh, `bash: ${inRedir.target}: ${fsPhrase(err)}\n`);
       return { code: 1, stdout: '' };
@@ -1422,7 +1632,7 @@ async function runSimple(cmd, sh, io) {
         const command = getCommand(name);
         if (command) {
           res = await command.run(
-            makeCommandCtx(sh, name, args, argText, stdin, cmdTerm, direct),
+            makeCommandCtx(sh, name, args, argText, stdin, cmdTerm, direct, stdinBinary),
           );
         } else {
           res = { stderr: commandNotFound(name), code: 127 };
@@ -1460,26 +1670,32 @@ async function runSimple(cmd, sh, io) {
   }
 
   if (outRedir) {
-    writeRedir(sh, outRedir, out);
+    // Only the command's own stdout is bytes; anything merged in from stderr
+    // (2>&1) makes the stream text again.
+    writeRedir(sh, outRedir, out, result.binary && !mergeErrIntoOut);
     out = '';
   } else if (io.isLast) {
     emitOut(sh, direct ? result.stdout : out);
   }
 
-  return { code: result.code, stdout: out };
+  return { code: result.code, stdout: out, binary: result.binary };
 }
 
 async function runPipeline(pipeline, sh) {
-  let stdin = '';
+  let stdin = sh.input || '';
+  sh.input = '';
+  let stdinBinary = false;
   let code = 0;
   const cmds = pipeline.commands;
   for (let i = 0; i < cmds.length; i += 1) {
     if (sh.signal && sh.signal.aborted) return 130;
     const res = await runSimple(cmds[i], sh, {
       stdin,
+      stdinBinary,
       isLast: i === cmds.length - 1,
     });
     stdin = res.stdout || '';
+    stdinBinary = res.binary === true;
     code = res.code;
     if (sh.exited) break;
   }

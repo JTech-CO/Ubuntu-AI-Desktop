@@ -444,12 +444,12 @@ export const USR_BIN = [
   'cp', 'cowsay', 'csplit', 'curl', 'cut', 'dash', 'date', 'dd', 'df', 'diff', 'dig',
   'dircolors', 'dirname', 'dmesg', 'dpkg', 'dpkg-deb', 'dpkg-query', 'du', 'echo',
   'ed', 'egrep', 'env', 'expand', 'expr', 'factor', 'false', 'fastfetch', 'fgrep',
-  'figlet', 'file', 'find', 'fmt', 'fold', 'fortune', 'free', 'gawk', 'gcc', 'gedit',
+  'figlet', 'file', 'find', 'fmt', 'fold', 'fortune', 'free', 'gcc', 'gedit',
   'git', 'gpg', 'grep', 'groups', 'gunzip', 'gzip', 'head', 'hostid', 'hostname',
   'hostnamectl', 'id', 'install', 'ip', 'join', 'journalctl', 'kill', 'killall',
   'less', 'link', 'ln', 'locale', 'localectl', 'logname', 'ls', 'lsblk', 'lscpu',
   'lsb_release', 'lsof', 'lsusb', 'man', 'md5sum', 'mkdir', 'mkfifo', 'mktemp',
-  'more', 'mv', 'nano', 'neofetch', 'netstat', 'nice', 'nl', 'nohup', 'nproc',
+  'mawk', 'more', 'mv', 'nano', 'nawk', 'neofetch', 'netstat', 'nice', 'nl', 'nohup', 'nproc',
   'nslookup', 'numfmt', 'od', 'paste', 'perl', 'pgrep', 'pidof', 'ping', 'pkill',
   'pr', 'printenv', 'printf', 'ps', 'pwd', 'python3', 'readlink', 'realpath',
   'rev', 'rm', 'rmdir', 'runcon', 'sed', 'seq', 'sha1sum', 'sha256sum', 'sha512sum',
@@ -458,7 +458,7 @@ export const USR_BIN = [
   'timeout', 'top', 'touch', 'tput', 'tr', 'traceroute', 'true', 'truncate', 'tty',
   'uname', 'unexpand', 'uniq', 'unlink', 'unzip', 'uptime', 'users', 'vim', 'wall',
   'watch', 'wc', 'wget', 'whereis', 'which', 'who', 'whoami', 'xargs', 'xdg-open',
-  'yes', 'zip',
+  'yes', 'zcat', 'zip',
 ];
 
 export const USR_SBIN = [

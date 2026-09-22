@@ -5,7 +5,7 @@
 [![Live demo](https://img.shields.io/badge/demo-live-E95420?style=flat-square)](https://jtech-co.github.io/Ubuntu-AI-Desktop/)
 ![No build step](https://img.shields.io/badge/build-none-772953?style=flat-square)
 ![Vanilla ES modules](https://img.shields.io/badge/js-vanilla%20ES%20modules-2C001E?style=flat-square)
-![Commands](https://img.shields.io/badge/shell-200%20commands-26A269?style=flat-square)
+![Commands](https://img.shields.io/badge/shell-213%20commands-26A269?style=flat-square)
 
 [![Ubuntu AI Desktop](assets/og-image.png)](https://jtech-co.github.io/Ubuntu-AI-Desktop/)
 
@@ -216,7 +216,13 @@ pipelines.
 
 Supported: `|`, `>`, `>>`, `<`, `2>`, `2>&1`, `&&`, `||`, `;`, trailing `&`,
 `$VAR`, `${VAR}`, `${VAR:-default}`, `$?`, `$(…)`, backticks, `*`, `?`, `[abc]`,
-`~`, aliases, and exit codes that propagate to `$?`.
+`~`, aliases, `# comments`, here-strings (`<<< "text"`), here-documents
+(`<<EOF`, `<<'EOF'` without expansion, `<<-EOF` stripping tabs — the prompt shows
+`> ` until the delimiter line arrives), and exit codes that propagate to `$?`.
+
+Binary data survives pipes and redirection: `tar czf - dir | tar tzf -` and
+`gzip -c file > file.gz` keep every byte, and the result opens with the real tools
+on any machine.
 
 Line editing has history (persisted to `~/.bash_history`), tab completion for
 both commands and paths, reverse-i-search with `Ctrl+R`, and the usual Emacs
@@ -234,8 +240,16 @@ set shopt type command eval help true false :`
 **Files** `ls cat tac head tail wc cp mv rm mkdir rmdir touch ln find tree du df
 stat file chmod chown realpath readlink basename dirname mktemp`
 
-**Text** `echo printf grep egrep fgrep sed sort uniq cut tr rev tee diff nl less
-more paste column fold split join comm shuf`
+**Text** `echo printf grep egrep fgrep sed awk mawk nawk sort uniq cut tr rev tee
+diff nl less more paste column fold split join comm shuf`
+
+**Shell tools** `env printenv expr xargs clear`
+
+**Archives** `tar gzip gunzip zcat zip unzip` — GNU tar format, gzip with a real
+header and CRC, zip with deflate. bzip2, xz and zstd say they are not implemented.
+
+**JSON** `jq` (1.7.1) — like a fresh Ubuntu, it is not installed until you run
+`sudo apt install jq`; until then the shell answers `Command 'jq' not found`.
 
 **System** `uname whoami id hostname hostnamectl uptime date cal ncal free ps top
 kill pkill killall pgrep pidof which whereis man lscpu lsblk lsusb lspci lsmod
@@ -269,7 +283,7 @@ your files alone — use `clear` or `Ctrl+L` for that.)
 GitHub sends `X-Frame-Options`, so the real site cannot be embedded, and the page
 says so. Enter then takes the browser tab to the live site; Escape cancels.
 
-That is 176 external commands plus 24 builtins — 200 in all, or 212 names counting
+That is 189 external commands plus 24 builtins — 213 in all, or 227 names counting
 aliases. Run `help` for the live list, or
 `man <command>` for a full page.
 
@@ -296,6 +310,14 @@ These are deliberate, and the commands tell you rather than pretending:
   inventing output.
 - **`ai … | grep`** — the progress spinner is buffered into the pipe along with
   the answer, because the shell gives commands a single output channel.
+- **`awk`** measures strings in characters, as gawk does in a UTF-8 locale; the
+  real mawk counts bytes. Output pipes (`print | "sort"`) run their command when
+  closed or when the program ends.
+- **`jq`** stops a filter after 15 seconds, since a runaway filter would block
+  the page, and integers beyond 2^53 lose precision (real jq 1.7 keeps the
+  literal).
+- **`tar`** handles `-c -x -t -r`; `-u`, `-A` and `--delete` say they are not
+  implemented.
 
 ---
 

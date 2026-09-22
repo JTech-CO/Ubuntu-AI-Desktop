@@ -148,6 +148,7 @@ function serializeForStorage(node, acc) {
     out.content = content;
   }
   if (typeof node.size === 'number') out.size = node.size;
+  if (node.binary) out.binary = true;
   return out;
 }
 
@@ -341,8 +342,38 @@ function sizeOf(node, resolvedPath) {
   if (resolvedPath && isProcPath(resolvedPath)) return 0;
   if (node.type === 'dir') return DIR_SIZE;
   if (node.type === 'link') return utf8Length(node.target || '');
+  // A binary file's content is a byte string: one char per byte.
+  if (node.binary) return (node.content || '').length;
   return utf8Length(node.content || '');
 }
+
+/* ------------------------------------------------------------------ *
+ * binary files
+ *
+ * Text files hold ordinary JS strings and are measured as UTF-8. A binary
+ * file (gzip, tar, zip output) holds a "byte string" — each char code 0-255 is
+ * one byte — and carries `binary: true` so it is measured and persisted as
+ * bytes. Byte strings pass through pipes and `>` untouched.
+ * ------------------------------------------------------------------ */
+
+/** @param {Uint8Array} bytes @returns {string} */
+function bytesToByteString(bytes) {
+  let out = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    out += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return out;
+}
+
+/** @param {string} str a byte string @returns {Uint8Array} */
+function byteStringToBytes(str) {
+  const out = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i += 1) out[i] = str.charCodeAt(i) & 0xff;
+  return out;
+}
+
+const utf8Strict = new TextDecoder('utf-8', { fatal: true });
 
 function statObject(node, resolvedPath, displayPath) {
   return {
@@ -358,6 +389,7 @@ function statObject(node, resolvedPath, displayPath) {
     isFile: node.type === 'file',
     isLink: node.type === 'link',
     target: node.type === 'link' ? node.target : undefined,
+    binary: node.type === 'file' && node.binary === true,
   };
 }
 
@@ -377,6 +409,7 @@ function cloneNode(node) {
     mtime: node.mtime,
   });
   if (typeof node.size === 'number') copy.size = node.size;
+  if (node.binary) copy.binary = true;
   return copy;
 }
 
@@ -398,6 +431,7 @@ function serialize(node) {
   } else {
     out.content = node.content;
     if (typeof node.size === 'number') out.size = node.size;
+    if (node.binary) out.binary = true;
   }
   return out;
 }
@@ -457,6 +491,7 @@ function deserialize(json, fallbackName = '', ctx = null) {
   }
   const node = fileNode(name, content, common);
   if (blobId) node.blobId = blobId;
+  if (json.binary === true) node.binary = true;
   if (Number.isFinite(json.size)) node.size = json.size;
   return node;
 }
@@ -662,6 +697,10 @@ function uniqueTrashName(filesDir, infoDir, name) {
  * ------------------------------------------------------------------ */
 
 export const fs = {
+  /** byte string <-> Uint8Array, for commands that produce binary output */
+  bytesToByteString,
+  byteStringToBytes,
+
   /** Home directory of the simulated user. */
   HOME,
   /** Absolute path of the freedesktop trash directory. */
@@ -829,7 +868,7 @@ export const fs = {
    * @param {{append?: boolean, create?: boolean, mode?: number, owner?: string, group?: string}} [opts]
    * @returns {object} stat of the written file
    */
-  writeFile(p, content, { append = false, create = true, mode, owner, group } = {}) {
+  writeFile(p, content, { append = false, create = true, mode, owner, group, binary = false } = {}) {
     const { parent, name, target } = parentOf(p);
     const text = content === undefined || content === null ? '' : String(content);
     let node = parent.children[name];
@@ -846,6 +885,9 @@ export const fs = {
       node.mtime = Date.now();
       if (typeof node.size === 'number') delete node.size;
       if (mode !== undefined) node.mode = mode;
+      // Appending keeps the file binary only if both parts are bytes.
+      if (binary && (!append || node.binary || node.content === text)) node.binary = true;
+      else delete node.binary;
     } else {
       if (!create) throw new FsError('ENOENT', target);
       node = fileNode(name, text, {
@@ -854,11 +896,50 @@ export const fs = {
         group: group || 'ubuntu',
         mtime: Date.now(),
       });
+      if (binary) node.binary = true;
       parent.children[name] = node;
       parent.mtime = Date.now();
     }
     change('write', target);
     return statObject(node, target);
+  },
+
+  /**
+   * Read a file as bytes. Text files are encoded as UTF-8, which is what a
+   * real file on disk would contain; binary files return their bytes as-is.
+   * @param {string} p
+   * @returns {Uint8Array}
+   */
+  readBytes(p) {
+    const found = lookup(p, true);
+    if (found.node.type === 'dir') throw new FsError('EISDIR', abs(p));
+    // Same order as readFile: a /proc generator wins over stored content.
+    const generator = PROC_GENERATORS[found.path];
+    if (generator) return new TextEncoder().encode(generator());
+    const content = typeof found.node.content === 'string' ? found.node.content : '';
+    if (found.node.binary) return byteStringToBytes(content);
+    return new TextEncoder().encode(content);
+  },
+
+  /**
+   * Write bytes. Valid UTF-8 without NUL bytes is stored as an ordinary text
+   * file — so a text file that went through tar or gzip comes back as text,
+   * readable by cat, grep and the editors — and anything else as binary.
+   * @param {string} p
+   * @param {Uint8Array} bytes
+   * @param {object} [opts] as for writeFile (append, create, mode)
+   * @returns {object} stat
+   */
+  writeBytes(p, bytes, opts = {}) {
+    if (!bytes.includes(0)) {
+      try {
+        return fs.writeFile(p, utf8Strict.decode(bytes), { ...opts, binary: false });
+      } catch (err) {
+        if (err instanceof FsError) throw err;
+        // not valid UTF-8: fall through and store the bytes
+      }
+    }
+    return fs.writeFile(p, bytesToByteString(bytes), { ...opts, binary: true });
   },
 
   /**
@@ -1002,6 +1083,22 @@ export const fs = {
       return statObject(found.node, target);
     }
     return fs.writeFile(target, '');
+  },
+
+  /**
+   * Set a modification time — what tar and gunzip do to restore the time an
+   * archived file carried. Does not follow a final symlink (lutimes).
+   * @param {string} p
+   * @param {number} mtime epoch milliseconds
+   * @returns {object} stat
+   */
+  utimes(p, mtime) {
+    const found = lookup(p, false);
+    const value = Number(mtime);
+    if (!Number.isFinite(value)) throw new FsError('EINVAL', abs(p));
+    found.node.mtime = value;
+    change('utimes', found.path);
+    return statObject(found.node, found.path);
   },
 
   /**

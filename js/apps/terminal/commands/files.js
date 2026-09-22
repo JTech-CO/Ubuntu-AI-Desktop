@@ -347,7 +347,7 @@ function readInputs(ctx, operands, cmd, style = 'plain') {
 
   for (const name of names) {
     if (name === '-') {
-      items.push({ name: '-', text: ctx.stdin || '' });
+      items.push({ name: '-', text: ctx.stdin || '', binary: ctx.stdinBinary === true });
       usedStdin = true;
       continue;
     }
@@ -360,7 +360,7 @@ function readInputs(ctx, operands, cmd, style = 'plain') {
         if (cmd === 'wc') items.push({ name, text: '' });
         continue;
       }
-      items.push({ name, text: ctx.fs.readFile(target) });
+      items.push({ name, text: ctx.fs.readFile(target), binary: ctx.fs.stat(target).binary === true });
     } catch (err) {
       if (style === 'open') errors.push(`${cmd}: cannot open '${name}' for reading: ${phrase(err)}\n`);
       else errors.push(`${cmd}: ${name}: ${phrase(err)}\n`);
@@ -1589,9 +1589,10 @@ DESCRIPTION
  * wc
  * ================================================================== */
 
-function countText(text) {
-  const bytes = new TextEncoder().encode(text).length;
-  const chars = Array.from(text).length;
+function countText(text, binary = false) {
+  // A binary file's content is a byte string: its length IS the byte count.
+  const bytes = binary ? text.length : new TextEncoder().encode(text).length;
+  const chars = binary ? text.length : Array.from(text).length;
   const { lines } = splitLines(text);
   const lineCount = text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0);
   const words = text.split(/\s+/).filter((w) => w !== '').length;
@@ -1641,7 +1642,7 @@ DESCRIPTION
     const total = { lines: 0, words: 0, bytes: 0, chars: 0, maxLine: 0 };
 
     for (const item of read.items) {
-      const counts = countText(item.text);
+      const counts = countText(item.text, item.binary === true);
       total.lines += counts.lines;
       total.words += counts.words;
       total.bytes += counts.bytes;
@@ -1661,8 +1662,12 @@ DESCRIPTION
       return list;
     };
 
+    // GNU wc: one input and one count print unpadded (`ls | wc -l` → "3");
+    // otherwise a pipe forces a width of 7.
     let width = 1;
-    if (read.usedStdin) {
+    if (rows.length === 1 && fields(rows[0].counts).length === 1) {
+      width = 1;
+    } else if (read.usedStdin) {
       width = 7;
     } else {
       for (const r of rows) for (const v of fields(r.counts)) width = Math.max(width, String(v).length);
@@ -2573,6 +2578,53 @@ const BINARY_MAGIC = [
   ['\u00ff\u00d8\u00ff', 'JPEG image data'],
 ];
 
+const le32 = (s, o) => ((s.charCodeAt(o) & 255) | ((s.charCodeAt(o + 1) & 255) << 8)
+  | ((s.charCodeAt(o + 2) & 255) << 16) | ((s.charCodeAt(o + 3) & 255) << 24)) >>> 0;
+
+/** file(1)'s asctime-style UTC stamp: `Wed Nov 15 07:13:20 2023`. */
+function magicDate(sec) {
+  const d = new Date(sec * 1000);
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const two = (n) => String(n).padStart(2, '0');
+  return `${days[d.getUTCDay()]} ${MONTHS[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2, ' ')} `
+    + `${two(d.getUTCHours())}:${two(d.getUTCMinutes())}:${two(d.getUTCSeconds())} ${d.getUTCFullYear()}`;
+}
+
+/** The gzip header fields file(1) reports; `bytes` is a byte string. */
+function describeGzip(bytes) {
+  const parts = ['gzip compressed data'];
+  if (bytes.length < 18) return parts[0];
+  const flags = bytes.charCodeAt(3);
+  if (flags & 0x08) {
+    let p = 10;
+    if (flags & 0x04) p += 2 + ((bytes.charCodeAt(10) & 255) | ((bytes.charCodeAt(11) & 255) << 8));
+    const end = bytes.indexOf('\0', p);
+    if (end > p) {
+      let name = bytes.slice(p, end);
+      try { name = decodeURIComponent(escape(name)); } catch { /* latin-1 name */ }
+      parts.push(`was "${name}"`);
+    }
+  }
+  const mtime = le32(bytes, 4);
+  if (mtime) parts.push(`last modified: ${magicDate(mtime)}`);
+  const xfl = bytes.charCodeAt(8);
+  if (xfl === 2) parts.push('max compression');
+  else if (xfl === 4) parts.push('max speed');
+  const os = { 0: 'FAT filesystem (MS-DOS, OS/2, NT/Win32)', 3: 'Unix', 7: 'Macintosh', 11: 'NTFS filesystem (NT)' }[bytes.charCodeAt(9)];
+  if (os) parts.push(`from ${os}`);
+  parts.push(`original size modulo 2^32 ${le32(bytes, bytes.length - 4)}`);
+  return parts.join(', ');
+}
+
+/** `Zip archive data, at least v2.0 to extract, compression method=deflate` */
+function describeZip(bytes) {
+  if (bytes.length < 30) return 'Zip archive data';
+  const need = (bytes.charCodeAt(4) & 255) | ((bytes.charCodeAt(5) & 255) << 8);
+  const method = (bytes.charCodeAt(8) & 255) | ((bytes.charCodeAt(9) & 255) << 8);
+  const name = { 0: 'store', 8: 'deflate', 12: 'bzip2', 14: 'lzma' }[method] || String(method);
+  return `Zip archive data, at least v${Math.floor(need / 10)}.${need % 10} to extract, compression method=${name}`;
+}
+
 function describeText(content, isExecutable, kind) {
   const encoding = /[^\u0000-\u007f]/.test(content) ? 'Unicode text, UTF-8 text' : 'ASCII text';
   const notes = [];
@@ -2671,6 +2723,15 @@ DESCRIPTION
               break;
             }
           }
+          // tar keeps its magic at offset 257: "ustar  \0" (GNU) or "ustar\0" (POSIX).
+          if (!magic && content.length >= 512) {
+            const tarMagic = content.slice(257, 265);
+            if (tarMagic === 'ustar  \0') magic = 'POSIX tar archive (GNU)';
+            else if (tarMagic.slice(0, 6) === 'ustar\0') magic = 'POSIX tar archive';
+          }
+          if (magic === 'gzip compressed data') magic = describeGzip(content);
+          else if (magic === 'Zip archive data') magic = describeZip(content);
+          if (!magic && st.binary) magic = 'data';
           if (magic) {
             desc = mime ? 'application/octet-stream; charset=binary' : magic;
           } else {

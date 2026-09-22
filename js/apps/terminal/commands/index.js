@@ -34,6 +34,10 @@ const MODULES = [
   './misc.js',
   './extras.js',
   './desktop.js',
+  './shell-utils.js',
+  './archive.js',
+  './jq.js',
+  './awk.js',
 ];
 
 /** @type {string[]} modules that failed to load, for diagnostics */
