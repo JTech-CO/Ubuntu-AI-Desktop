@@ -25,7 +25,11 @@ jobs:
       - name: Compare with the real mawk, jq, tar, gzip and unzip
         # Informational: a difference is worth reading, not a broken build.
         continue-on-error: true
+        env:
+          UAD_AWK: /usr/bin/mawk
+          UAD_JQ: /usr/bin/jq
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq mawk jq zip unzip
+          /usr/bin/jq --version
           node tests/differential.mjs

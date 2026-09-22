@@ -57,10 +57,21 @@ class RefCell {
   constructor(create) { this.create = create; }
 }
 
-/** The longest decimal prefix: "3abc" → 3, " 12 " → 12, "0x1A" → 0 (no hex, as POSIX asks). */
+/**
+ * The longest numeric prefix, read the way C's strtod does — which is what
+ * mawk uses: "3abc" → 3, " 12 " → 12, and also "0x1A" → 26 and "inf".
+ * (gawk refuses hex here and gives 0.)
+ */
 export function strtod(s) {
-  const m = /^[ \t\n\r\f\v]*([-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?)/.exec(s);
-  return m ? Number(m[1]) : 0;
+  const m = /^[ \t\n\r\f\v]*([-+]?)(0[xX][0-9a-fA-F]+|inf(inity)?|nan|(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?)/i.exec(s);
+  if (!m) return 0;
+  const body = m[2].toLowerCase();
+  let v;
+  if (body.startsWith('0x')) v = parseInt(body.slice(2), 16);
+  else if (body.startsWith('inf')) v = Infinity;
+  else if (body === 'nan') v = NaN;
+  else v = Number(m[2]);
+  return m[1] === '-' ? -v : v;
 }
 
 function toNum(v) {
@@ -1948,11 +1959,17 @@ export class Awk {
         return Array.from(S(yield* this.ev(a[0]))).length;
       }
       case 'substr': {
-        // As gawk and BWK awk: both truncated, and a start before 1 counts as 1.
+        // As mawk 1.3.4: both truncated; a start before 1 counts as 1 and the
+        // length grows by the shortfall, so substr("hello", -1, 3) is "hell"
+        // (gawk gives "hel", POSIX "h").
         const s = Array.from(S(yield* this.ev(a[0])));
         let start = Math.trunc(toNum(yield* this.ev(a[1])));
-        const len = a[2] ? Math.trunc(toNum(yield* this.ev(a[2]))) : Infinity;
-        if (!(start >= 1)) start = 1;
+        let len = a[2] ? Math.trunc(toNum(yield* this.ev(a[2]))) : Infinity;
+        if (Number.isNaN(start)) start = 1;
+        if (start < 1) {
+          len -= start;
+          start = 1;
+        }
         if (!(len > 0)) return '';
         return s.slice(start - 1, len === Infinity ? undefined : start - 1 + len).join('');
       }

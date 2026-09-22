@@ -41,7 +41,10 @@ const report = (area, label, ours, theirs, note) => {
 
 /* ------------------------------------------------------------------ awk */
 
-const awkBin = ['mawk', 'awk', 'gawk'].find((b) => has(b, ['-W', 'version']) || has(b));
+// UAD_AWK / UAD_JQ pick an exact binary (CI uses Ubuntu's /usr/bin ones, not
+// the runner's own jq 1.7 in /usr/local/bin).
+const awkBin = [process.env.UAD_AWK, 'mawk', 'awk', 'gawk'].filter(Boolean).find((b) => has(b, ['-W', 'version']) || has(b));
+const jqBin = process.env.UAD_JQ || 'jq';
 if (awkBin) {
   const version = spawnSync(awkBin, ['-W', 'version'], { encoding: 'utf8' }).stdout.split('\n')[0]
     || spawnSync(awkBin, ['--version'], { encoding: 'utf8' }).stdout.split('\n')[0];
@@ -70,9 +73,9 @@ if (awkBin) {
 
 /* ------------------------------------------------------------------- jq */
 
-if (has('jq')) {
-  const version = spawnSync('jq', ['--version'], { encoding: 'utf8' }).stdout.trim();
-  console.log(`jq: comparing with ${version}`);
+if (has(jqBin)) {
+  const version = spawnSync(jqBin, ['--version'], { encoding: 'utf8' }).stdout.trim();
+  console.log(`jq: comparing with ${version} (${jqBin})`);
   const J = await load('js/apps/terminal/commands/jq-engine.js');
   const { cases } = JSON.parse(readFileSync(path.join(ROOT, 'tests', 'fixtures', 'jq-cases.json'), 'utf8'));
   const io = { env: new Map(Object.entries(process.env)), named: new Map([['ARGS', new Map([['positional', []], ['named', new Map()]])]]), input: () => undefined, stderr: () => {} };
@@ -81,7 +84,7 @@ if (has('jq')) {
   for (const c of cases) {
     if (/\$ENV|env\.|input_filename|now|\$__loc__/.test(c.program)) continue;
     const args = c.input === null ? ['-n', '-c', c.program] : ['-c', c.program];
-    const r = spawnSync('jq', args, { input: c.input === null ? '' : c.input, encoding: 'utf8' });
+    const r = spawnSync(jqBin, args, { input: c.input === null ? '' : c.input, encoding: 'utf8' });
     let ours;
     try {
       ours = Array.from(J.run(J.compile(c.program, ['ARGS']), c.input === null ? null : J.parseJson(c.input), io)).map((v) => J.dump(v, {})).join('\n');
@@ -95,7 +98,7 @@ if (has('jq')) {
     } catch {
       same = false;
     }
-    if (!same) report('jq', c.program, ours, r.status === 0 ? r.stdout.trim() : `exit ${r.status}: ${r.stderr.trim()}`);
+    if (!same) report('jq', c.program, ours, r.status === 0 ? r.stdout.trim() : `exit ${r.status}: ${r.stderr.trim()}`, c.note);
   }
   console.log(`jq: ${n} filters checked`);
 } else {

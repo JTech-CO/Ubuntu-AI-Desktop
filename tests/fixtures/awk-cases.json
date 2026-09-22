@@ -122,7 +122,8 @@
   {
     "program": "BEGIN{print substr(\"hello\",2,3), substr(\"hello\",0), substr(\"hello\",-1,3), substr(\"hello\",4)}",
     "stdin": "",
-    "expect": "ell hello hel lo\n"
+    "expect": "ell hello hell lo\n",
+    "note": "mawk: a start before 1 lengthens the result, so substr(\"hello\",-1,3) is \"hell\" (gawk: \"hel\")"
   },
   {
     "program": "BEGIN{print substr(\"hello\", 1.5, 2.3), substr(\"hello\", 2.5, 2), substr(\"hello\", 0, 3)}",
@@ -197,7 +198,8 @@
   {
     "program": "BEGIN{print \"3abc\"+0, \" 12 \"+0, \"1e3\"+0, \".5\"+0, \"x\"+0, -\"3\", \"0x1A\"+0}",
     "stdin": "",
-    "expect": "3 12 1000 0.5 0 -3 0\n"
+    "expect": "3 12 1000 0.5 0 -3 26\n",
+    "note": "mawk converts strings with C strtod, so \"0x1A\"+0 is 26 (gawk: 0)"
   },
   {
     "program": "{print ($1 == 10), ($1 == \"10\"), ($1 < 9)}",
