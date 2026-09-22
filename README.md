@@ -115,7 +115,9 @@ The pieces worth knowing about:
 
 | Module | Role |
 | --- | --- |
-| `js/core/fs.js` | The virtual filesystem. Every app reads and writes through it, and it persists to `localStorage`. Emits `fs:change` so views refresh themselves. |
+| `js/core/fs.js` | The virtual filesystem. Every app reads and writes through it. Emits `fs:change` so views refresh themselves. |
+| `js/core/fs-persist.js` | Saves the filesystem to IndexedDB: the tree as one record, large files as separate blobs, only changed blobs rewritten, all in one atomic transaction. Reports failed saves instead of swallowing them. |
+| `js/core/writer-lock.js` | One tab saves, any other tab only reads — a Web Lock plus a BroadcastChannel handover. |
 | `js/core/bus.js` | The event bus that decouples the shell from the apps. |
 | `js/core/procs.js` | The simulated process table behind `ps`, `top`, `kill` and System Monitor. |
 | `js/shell/window-manager.js` | Builds every window from one template: drag, eight-way resize, edge snapping, tiling, minimise, focus. |
@@ -415,18 +417,44 @@ recursively. Long-running commands must watch `ctx.signal` so `Ctrl+C` works.
 
 ---
 
+## Where your files are kept
+
+The filesystem is saved to **IndexedDB**; settings, the API key and the saved
+session stay in `localStorage`. The split matters: `localStorage` is capped at
+about 5 MiB per origin, and a single full-HD screenshot is 1–4 MB as a data URL,
+so a filesystem kept there filled up after a couple of screenshots — and failed
+silently, rolling the desktop back on the next reload. IndexedDB quotas run to
+gigabytes.
+
+- Large files (16 KB and up) are stored as separate records, and a save only
+  rewrites the ones that changed. With megabytes of images on disk, an everyday
+  change still writes only the small tree.
+- If a save does fail, a notification says so and stays until a later save
+  succeeds, with shortcuts to free space. Emptying the trash matters: trashed
+  files still occupy storage.
+- Existing desktops migrate automatically on first load; the old `uad:fs`
+  `localStorage` key is deleted once the move succeeds.
+- If IndexedDB cannot be opened at all, saving falls back to `localStorage` and a
+  notification explains the 5 MiB limit.
+
+**Opening the desktop in two tabs** is safe. The first tab saves; a second one
+becomes read-only, shows a banner saying its changes are not being kept, and
+offers **Use here**, which asks the first tab to save and step down. (Before
+this, both tabs saved over each other and the last one to write silently won.)
+
 ## Resetting
 
-The desktop keeps its filesystem and settings in `localStorage`. To wipe it and
-get a fresh install, run this in the browser console:
+To wipe everything and get a fresh install, run `reset` in the terminal, or this
+in the browser console:
 
 ```js
 UAD.reset();
 ```
 
-`localStorage.clear(); location.reload()` also works, but only because the
-unload handler checks whether the store was cleared out from under it before
-saving. Prefer `UAD.reset()`.
+It clears both IndexedDB and `localStorage` and reloads. `localStorage.clear()`
+on its own no longer resets the desktop — the filesystem is not there any more.
+A read-only tab refuses to reset, since it would wipe the data another tab is
+using.
 
 `window.UAD` exposes `fs`, `wm`, `procs`, `env`, `bus`, `store`, `gemini`,
 `metrics`, `notify`, `settings` and `apps` for poking around.

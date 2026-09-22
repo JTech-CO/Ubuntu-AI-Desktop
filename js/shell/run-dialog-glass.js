@@ -21,6 +21,26 @@ import { gemini } from '../services/gemini.js';
 import { settings } from '../apps/settings/state.js';
 import { wm } from './window-manager.js';
 import { commandNames, builtinNames } from '../apps/terminal/shell.js';
+import { fsPersist } from '../core/fs-persist.js';
+import { writerLock } from '../core/writer-lock.js';
+
+/**
+ * Where the filesystem is being saved, and whether this tab is allowed to.
+ * @returns {string}
+ */
+function persistLabel() {
+  const p = fsPersist.info();
+  const where =
+    p.backend === 'idb'
+      ? `IndexedDB — ${p.blobCount} large file(s) as blobs, ${human(p.blobChars)}`
+      : p.backend === 'localStorage'
+        ? 'localStorage (IndexedDB unavailable, ~5 MiB cap)'
+        : p.backend;
+  const role = writerLock.getRole();
+  const who = role === 'reader' ? ' · READ-ONLY, another tab owns the desktop' : '';
+  const health = p.failing ? ' · LAST SAVE FAILED' : '';
+  return where + who + health;
+}
 
 /**
  * Walk a filesystem snapshot, counting what is in it.
@@ -158,7 +178,8 @@ function lookingGlassData() {
         ['Files', String(tree.files)],
         ['Symlinks', String(tree.links)],
         ['Content', human(tree.bytes)],
-        ['localStorage', `${human(footprint.bytes)} across ${footprint.keys} keys`],
+        ['Saved to', persistLabel()],
+        ['localStorage', `${human(footprint.bytes)} across ${footprint.keys} keys (settings)`],
       ],
     },
     {

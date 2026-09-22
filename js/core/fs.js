@@ -4,7 +4,7 @@
  * Single source of truth for Terminal, Files, Text Editor, Code-OSS and Trash.
  * Errors are `FsError` with POSIX codes so commands can print the exact GNU
  * coreutils phrasing. Writes emit `fs:change` on the bus and schedule a
- * debounced persist into `store`.
+ * debounced save through js/core/fs-persist.js (IndexedDB).
  *
  * Trash follows the freedesktop.org Trash specification: files move to
  * ~/.local/share/Trash/files and a `.trashinfo` file is written alongside in
@@ -12,7 +12,7 @@
  */
 
 import { bus } from './bus.js';
-import { store } from './store.js';
+import { fsPersist } from './fs-persist.js';
 import * as path from './path.js';
 import { buildDefaultTree, dirNode, fileNode, linkNode, PROC_GENERATORS } from './fs-tree.js';
 
@@ -72,12 +72,139 @@ function schedulePersist() {
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     persistTimer = 0;
-    writeSnapshot();
+    void writeSnapshot();
   }, PERSIST_DELAY_MS);
 }
 
+/* ------------------------------------------------------------------ *
+ * saving
+ * ------------------------------------------------------------------ */
+
+/**
+ * File contents at least this long are stored as their own blob record
+ * instead of inline in the tree. Screenshots and other data-URL images are
+ * megabytes; nearly every text file is far below this.
+ */
+const BLOB_THRESHOLD = 16 * 1024;
+
+/**
+ * blob id -> the exact content string last committed under that id.
+ *
+ * This is how a save knows which blobs changed without any dirty-flag
+ * bookkeeping at the many places content is assigned: strings are immutable,
+ * so an unchanged file still holds the very same string object, and `!==`
+ * against it is a pointer comparison. Only a file that was actually rewritten
+ * gets its blob written again.
+ */
+const committedBlobs = new Map();
+let blobSeq = 0;
+
+function newBlobId() {
+  blobSeq += 1;
+  return `${Date.now().toString(36)}-${blobSeq.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * Serialise for IndexedDB: like `serialize`, but large contents become
+ * `{ blob: id }` references and are collected into `acc.puts` when changed.
+ *
+ * @param {object} node
+ * @param {{puts: Map<string,string>, referenced: Set<string>, chars: number}} acc
+ * @returns {object}
+ */
+function serializeForStorage(node, acc) {
+  const out = {
+    type: node.type,
+    name: node.name,
+    mode: node.mode,
+    owner: node.owner,
+    group: node.group,
+    mtime: node.mtime,
+  };
+  if (node.type === 'dir') {
+    const children = {};
+    for (const [name, child] of Object.entries(node.children)) {
+      children[name] = serializeForStorage(child, acc);
+    }
+    out.children = children;
+    return out;
+  }
+  if (node.type === 'link') {
+    out.target = node.target;
+    return out;
+  }
+
+  const content = typeof node.content === 'string' ? node.content : '';
+  if (content.length >= BLOB_THRESHOLD) {
+    if (!node.blobId) node.blobId = newBlobId();
+    acc.referenced.add(node.blobId);
+    acc.chars += content.length;
+    if (committedBlobs.get(node.blobId) !== content) acc.puts.set(node.blobId, content);
+    out.blob = node.blobId;
+  } else {
+    // Shrunk below the threshold: inline it again. The old blob is no longer
+    // referenced and is deleted by the same save.
+    if (node.blobId) delete node.blobId;
+    out.content = content;
+  }
+  if (typeof node.size === 'number') out.size = node.size;
+  return out;
+}
+
+/** One save, from the current tree. @returns {Promise<boolean>} */
+async function doSave() {
+  try {
+    if (!fsPersist.usesBlobs()) {
+      return await fsPersist.save({ full: serialize(root) });
+    }
+
+    const acc = { puts: new Map(), referenced: new Set(), chars: 0 };
+    const tree = serializeForStorage(root, acc);
+    const deletes = [];
+    for (const id of committedBlobs.keys()) {
+      if (!acc.referenced.has(id)) deletes.push(id);
+    }
+
+    const ok = await fsPersist.save({ tree, puts: acc.puts, deletes });
+    if (ok) {
+      for (const [id, content] of acc.puts) committedBlobs.set(id, content);
+      for (const id of deletes) committedBlobs.delete(id);
+      fsPersist.noteStats({ blobCount: acc.referenced.size, blobChars: acc.chars });
+    }
+    return ok;
+  } catch (err) {
+    console.error('[fs] could not serialise the filesystem for saving:', err);
+    return false;
+  }
+}
+
+let saving = null;
+let saveAgain = false;
+
+/**
+ * Save the tree. Saves never overlap: a request that arrives while one is in
+ * flight is folded into a single follow-up save. Overlapping saves could each
+ * compute their blob deletions from a stale view of what is committed.
+ *
+ * @returns {Promise<boolean>}
+ */
 function writeSnapshot() {
-  store.set('fs', serialize(root));
+  if (saving) {
+    saveAgain = true;
+    return saving;
+  }
+  const run = async () => {
+    let ok = false;
+    do {
+      saveAgain = false;
+      ok = await doSave();
+    } while (saveAgain);
+    return ok;
+  };
+  saving = run().finally(() => {
+    saving = null;
+  });
+  return saving;
 }
 
 function change(op, p, to) {
@@ -275,7 +402,13 @@ function serialize(node) {
   return out;
 }
 
-function deserialize(json, fallbackName = '') {
+/**
+ * @param {object} json
+ * @param {string} [fallbackName]
+ * @param {{blobs: Map<string,string>, claimed: Set<string>, missing: string[]}} [ctx]
+ *   blob contents loaded from IndexedDB, for `{ blob: id }` references
+ */
+function deserialize(json, fallbackName = '', ctx = null) {
   if (!json || typeof json !== 'object') throw new FsError('EINVAL', '/');
   const type = json.type === 'dir' || json.type === 'file' || json.type === 'link' ? json.type : null;
   if (!type) throw new FsError('EINVAL', '/');
@@ -296,7 +429,7 @@ function deserialize(json, fallbackName = '') {
     const node = dirNode(name, common);
     const children = json.children && typeof json.children === 'object' ? json.children : {};
     for (const [childName, childJson] of Object.entries(children)) {
-      node.children[childName] = deserialize(childJson, childName);
+      node.children[childName] = deserialize(childJson, childName, ctx);
     }
     return node;
   }
@@ -305,7 +438,25 @@ function deserialize(json, fallbackName = '') {
     node.mode = common.mode;
     return node;
   }
-  const node = fileNode(name, typeof json.content === 'string' ? json.content : '', common);
+  let content = typeof json.content === 'string' ? json.content : '';
+  let blobId = '';
+  if (typeof json.blob === 'string') {
+    const stored = ctx ? ctx.blobs.get(json.blob) : undefined;
+    if (typeof stored === 'string') {
+      content = stored;
+      // Two tree entries naming one blob would mean a later write to either
+      // silently rewrites the other. Only the first keeps the id; the second
+      // keeps its content and gets a fresh id on the next save.
+      if (!ctx.claimed.has(json.blob)) {
+        ctx.claimed.add(json.blob);
+        blobId = json.blob;
+      }
+    } else if (ctx) {
+      ctx.missing.push(json.blob);
+    }
+  }
+  const node = fileNode(name, content, common);
+  if (blobId) node.blobId = blobId;
   if (Number.isFinite(json.size)) node.size = json.size;
   return node;
 }
@@ -1040,17 +1191,32 @@ export const fs = {
 
   /**
    * Replace the whole tree. Falls back to a pristine install on bad input.
-   * @param {object} json
+   *
+   * @param {object} json a tree from `snapshot()` or from storage
+   * @param {Map<string,string>} [blobs] contents for `{ blob: id }` references,
+   *   as loaded from IndexedDB. Every loaded blob — referenced or not — is
+   *   recorded as committed, so orphans left by an interrupted session are
+   *   deleted by the next save rather than accumulating forever.
    * @returns {boolean} true when the snapshot was accepted
    */
-  restore(json) {
+  restore(json, blobs = null) {
     if (!json || typeof json !== 'object' || json.type !== 'dir') {
       fs.reset();
       return false;
     }
     try {
-      const rebuilt = deserialize(json, '');
+      const ctx = { blobs: blobs instanceof Map ? blobs : new Map(), claimed: new Set(), missing: [] };
+      const rebuilt = deserialize(json, '', ctx);
       if (rebuilt.type !== 'dir') throw new FsError('EINVAL', '/');
+      if (ctx.missing.length) {
+        console.warn(
+          `[fs] ${ctx.missing.length} file(s) referenced blobs that were not in storage; ` +
+            'they were restored empty.',
+          ctx.missing,
+        );
+      }
+      committedBlobs.clear();
+      for (const [id, content] of ctx.blobs) committedBlobs.set(id, content);
       root = rebuilt;
       root.name = '';
       // A restored tree may predate directories the app now relies on.
@@ -1070,24 +1236,34 @@ export const fs = {
     }
   },
 
-  /** Rebuild the pristine Ubuntu tree and persist it immediately. */
+  /**
+   * Rebuild the pristine Ubuntu tree and save it immediately.
+   * `committedBlobs` is deliberately kept: the fresh tree references none of
+   * them, so the save deletes every old blob from storage.
+   * @returns {Promise<boolean>}
+   */
   reset() {
     root = buildDefaultTree();
     if (persistTimer) {
       clearTimeout(persistTimer);
       persistTimer = 0;
     }
-    writeSnapshot();
+    const saved = writeSnapshot();
     bus.emit('fs:change', { op: 'write', path: '/' });
+    return saved;
   },
 
-  /** Force an immediate save (writes are normally debounced 400 ms). */
+  /**
+   * Save now instead of waiting out the 400 ms debounce.
+   * @returns {Promise<boolean>} true when the snapshot committed; false when
+   *   it failed, or when this tab is not allowed to write
+   */
   persist() {
     if (persistTimer) {
       clearTimeout(persistTimer);
       persistTimer = 0;
     }
-    writeSnapshot();
+    return writeSnapshot();
   },
 
   /* --- convenience used across the apps -------------------------- */

@@ -21,6 +21,9 @@ import { dialog } from './core/dialog.js';
 import { h } from './core/dom.js';
 import { gemini } from './services/gemini.js';
 import { factoryReset } from './core/factory-reset.js';
+import { fsPersist } from './core/fs-persist.js';
+import { writerLock } from './core/writer-lock.js';
+import { storageStatus } from './shell/storage-status.js';
 
 import { wm } from './shell/window-manager.js';
 import { installTopBar } from './shell/top-bar.js';
@@ -63,6 +66,36 @@ function step(label, fn) {
   }
 }
 
+/**
+ * `step` for work that has to finish before boot continues. Used with
+ * top-level await, which holds the rest of this module — behind the boot
+ * splash — until storage has been read.
+ *
+ * @param {string} label
+ * @param {() => Promise<any>} fn
+ * @returns {Promise<any>}
+ */
+async function stepAsync(label, fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    failures.push(label);
+    console.group(`%c[boot] ${label} failed`, 'color:#c01c28;font-weight:bold');
+    console.error(err);
+    console.groupEnd();
+    return undefined;
+  }
+}
+
+/* ===================================================================== *
+ * 0. who may save — decided before anything can write
+ * A second tab of the desktop becomes a read-only "reader"; see
+ * js/core/writer-lock.js. This must precede every step below, because
+ * applying settings and restoring the filesystem can both write.
+ * ===================================================================== */
+
+await stepAsync('decide writer role', () => writerLock.acquire());
+
 /* ===================================================================== *
  * 1. appearance — applied before the splash lifts, so there is no flash
  * ===================================================================== */
@@ -78,13 +111,16 @@ step('install settings bridge', () => installSettingsBridge());
  * 2. filesystem
  * ===================================================================== */
 
-const firstRun = step('restore filesystem', () => {
-  const snapshot = store.get('fs', null);
-  if (snapshot) {
-    fs.restore(snapshot);
+const firstRun = await stepAsync('restore filesystem', async () => {
+  const { tree, blobs, source } = await fsPersist.load();
+  if (tree) {
+    fs.restore(tree, blobs);
+    // Loaded from the pre-IndexedDB localStorage snapshot: save once now so
+    // it moves across. fs-persist deletes the localStorage copy on success.
+    if (source === 'legacy') void fs.persist();
     return false;
   }
-  fs.reset();
+  await fs.reset();
   store.set('firstrun', { at: Date.now() });
   return true;
 });
@@ -346,19 +382,31 @@ step('offer keyboard capture', () => {
 step('register session persistence', () => {
   bus.on('win:open', saveSession);
   bus.on('win:close', saveSession);
-  window.addEventListener('beforeunload', () => {
+
+  /**
+   * Flush on the way out. IndexedDB writes are asynchronous, so there is no
+   * guarantee a write started during unload finishes; the reliable moment is
+   * earlier — `visibilitychange` to hidden, which fires when the user switches
+   * tabs or minimises, well before any unload. `pagehide` is the last chance,
+   * and unlike `beforeunload` it does not disable the back/forward cache.
+   *
+   * A reader tab and a tab mid-factory-reset both no-op inside fs-persist.
+   */
+  const flush = () => {
     if (factoryReset.isWiping()) return;
-
-    // If the `fs` key has vanished while the page was open, someone cleared
-    // storage deliberately (the documented `localStorage.clear()` reset, or the
-    // browser's "clear site data"). Persisting here would resurrect exactly the
-    // state they just deleted, so the reset would silently do nothing.
-    if (store.get('fs', null) === null) return;
-
-    fs.persist();
+    void fs.persist();
     saveSession();
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flush();
   });
+  window.addEventListener('pagehide', flush);
+
+  // A writer asked to hand over saves its pending changes first.
+  writerLock.setFlushHook(() => fs.persist());
 });
+
+step('install storage status', () => storageStatus.install());
 
 /* ===================================================================== *
  * 8. debug handle + splash
@@ -368,6 +416,8 @@ window.UAD = {
   fs, wm, procs, env, bus, store, gemini, metrics, notify, settings, apps,
   reset: factoryReset.run,
   factoryReset,
+  fsPersist,
+  writerLock,
 };
 
 step('dismiss boot splash', () => {

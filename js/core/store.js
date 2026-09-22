@@ -2,9 +2,26 @@
  * js/core/store.js — namespaced localStorage wrapper (ARCHITECTURE §3).
  *
  * Every key is stored under the `uad:` prefix. Values are JSON encoded.
- * All operations are defensive: a disabled/full/foreign localStorage never
- * throws out of this module — reads fall back, writes silently no-op.
+ * Nothing here throws: a disabled, full or foreign localStorage falls back.
+ *
+ * Holds the small things — settings, the API key, the saved session. The
+ * filesystem lives in IndexedDB (js/core/fs-persist.js); localStorage's
+ * ~5 MiB per-origin cap is far too small for it.
+ *
+ * THE OVERLAY
+ * -----------
+ * `overlay` holds values that were written this session but are NOT on disk:
+ * either because the write failed (quota), or because this tab is a reader
+ * that must not write (another tab owns the desktop). Reads consult the
+ * overlay first, so the tab stays self-consistent — it sees what it just set —
+ * even though nothing it sets will survive a reload.
+ *
+ * (Before the overlay was consulted on read, a failed write left the stale
+ * on-disk value visible for the rest of the session: you set a value, and
+ * reading it back returned the old one.)
  */
+
+import { bus } from './bus.js';
 
 const PREFIX = 'uad:';
 
@@ -19,10 +36,14 @@ export const RESERVED_KEYS = Object.freeze([
   'firstrun',
 ]);
 
-/** In-memory fallback used when localStorage is unavailable (private mode, file://). */
-const memory = new Map();
+/** Values written this session that are not on disk. `null` marks a removal. */
+const overlay = new Map();
+/** Keys whose last write failed, so recovery can be announced once. */
+const failing = new Set();
+
 let backendChecked = false;
 let backendOk = false;
+let readOnly = false;
 
 function backend() {
   if (!backendChecked) {
@@ -42,63 +63,85 @@ function backend() {
 }
 
 function rawGet(fullKey) {
+  if (overlay.has(fullKey)) return overlay.get(fullKey);
   const ls = backend();
-  if (ls) {
-    try {
-      return ls.getItem(fullKey);
-    } catch {
-      return null;
-    }
+  if (!ls) return null;
+  try {
+    return ls.getItem(fullKey);
+  } catch {
+    return null;
   }
-  return memory.has(fullKey) ? memory.get(fullKey) : null;
 }
 
 function rawSet(fullKey, raw) {
   const ls = backend();
-  if (ls) {
-    try {
-      ls.setItem(fullKey, raw);
-      return true;
-    } catch (err) {
-      // QuotaExceededError / NS_ERROR_DOM_QUOTA_REACHED — degrade quietly.
-      console.warn(`[store] could not persist "${fullKey}":`, err && err.name ? err.name : err);
-      memory.set(fullKey, raw);
-      return false;
-    }
+  if (!ls || readOnly) {
+    overlay.set(fullKey, raw);
+    // Keeping it in memory is the intended behaviour in both cases, not a
+    // failure: without localStorage there is nowhere else, and a reader tab
+    // is not allowed to write.
+    return true;
   }
-  memory.set(fullKey, raw);
-  return true;
+  try {
+    ls.setItem(fullKey, raw);
+    overlay.delete(fullKey);
+    if (failing.delete(fullKey)) {
+      bus.emit('storage:recovered', { target: fullKey.slice(PREFIX.length), backend: 'localStorage' });
+    }
+    return true;
+  } catch (err) {
+    // QuotaExceededError / NS_ERROR_DOM_QUOTA_REACHED.
+    overlay.set(fullKey, raw);
+    console.warn(`[store] could not persist "${fullKey}":`, err && err.name ? err.name : err);
+    if (!failing.has(fullKey)) {
+      failing.add(fullKey);
+      bus.emit('storage:error', {
+        target: fullKey.slice(PREFIX.length),
+        backend: 'localStorage',
+        quota: true,
+        name: (err && err.name) || 'Error',
+        message: String((err && err.message) || err),
+      });
+    }
+    return false;
+  }
 }
 
 function rawRemove(fullKey) {
   const ls = backend();
-  if (ls) {
-    try {
-      ls.removeItem(fullKey);
-    } catch {
-      /* ignore */
-    }
+  if (!ls || readOnly) {
+    // Shadow the on-disk value for this session without touching the disk.
+    if (ls) overlay.set(fullKey, null);
+    else overlay.delete(fullKey);
+    return;
   }
-  memory.delete(fullKey);
+  try {
+    ls.removeItem(fullKey);
+  } catch {
+    /* ignore */
+  }
+  overlay.delete(fullKey);
+  failing.delete(fullKey);
 }
 
 function rawKeys() {
-  const out = [];
+  const out = new Set();
   const ls = backend();
   if (ls) {
     try {
       for (let i = 0; i < ls.length; i += 1) {
         const k = ls.key(i);
-        if (typeof k === 'string' && k.startsWith(PREFIX)) out.push(k);
+        if (typeof k === 'string' && k.startsWith(PREFIX)) out.add(k);
       }
     } catch {
       /* ignore */
     }
   }
-  for (const k of memory.keys()) {
-    if (!out.includes(k)) out.push(k);
+  for (const [k, v] of overlay) {
+    if (v === null) out.delete(k);
+    else out.add(k);
   }
-  return out;
+  return Array.from(out);
 }
 
 export const store = {
@@ -121,7 +164,8 @@ export const store = {
   /**
    * @param {string} key un-prefixed key
    * @param {any} value JSON-serialisable value
-   * @returns {boolean} true when the write reached the real backend
+   * @returns {boolean} false only when a write to real storage failed; the
+   *   value is still readable for the rest of this session
    */
   set(key, value) {
     let raw;
@@ -152,6 +196,21 @@ export const store = {
 
   /** @param {string} key @returns {boolean} */
   has(key) {
-    return rawGet(PREFIX + key) !== null;
+    const raw = rawGet(PREFIX + key);
+    return raw !== null && raw !== undefined;
+  },
+
+  /**
+   * Stop writing to disk; keep changes in memory for this session only.
+   * Used when another tab owns the desktop (js/core/writer-lock.js).
+   * @param {boolean} value
+   */
+  setReadOnly(value) {
+    readOnly = Boolean(value);
+  },
+
+  /** @returns {boolean} */
+  isReadOnly() {
+    return readOnly;
   },
 };

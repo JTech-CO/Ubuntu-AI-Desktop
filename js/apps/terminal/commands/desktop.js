@@ -81,6 +81,16 @@ EXIT STATUS
       return fail(`reset: unrecognized option '${unknown}'\nTry 'reset --help' for more information.\n`, 1);
     }
 
+    // Before the prompt: a reader tab must not be walked through a
+    // confirmation and progress lines only to be refused at the end.
+    if (!factoryReset.canRun()) {
+      return fail(
+        '\nreset: 이 데스크톱은 다른 탭에서 열려 있어 이 탭에서는 초기화할 수 없습니다.\n' +
+          '       화면 아래의 "여기서 사용" 을 누른 뒤 다시 실행하세요.\n\n',
+        1,
+      );
+    }
+
     if (!assumeYes) {
       ctx.term.writeLine('');
       ctx.term.writeLine(paint(ORANGE + BOLD, '  ⚠  이 컴퓨터를 공장 초기화합니다'));
@@ -115,7 +125,16 @@ EXIT STATUS
       ctx.term.writeLine(` ${paint(GREEN, '완료')}`);
     }
 
-    const result = factoryReset.run({ keepApiKey: !wipeKey, reload: false });
+    let result;
+    try {
+      result = await factoryReset.run({ keepApiKey: !wipeKey, reload: false });
+    } catch (err) {
+      if (err && err.message === 'READ_ONLY') {
+        // Another tab took over while the confirmation was open.
+        return fail('\nreset: 다른 탭이 이 데스크톱을 이어받아 초기화를 취소했습니다.\n\n', 1);
+      }
+      return fail(`\nreset: 초기화하지 못했습니다: ${(err && err.message) || err}\n\n`, 1);
+    }
 
     ctx.term.writeLine('');
     ctx.term.writeLine(

@@ -1,0 +1,86 @@
+/* ===========================================================================
+   storage-status.css — the "this tab is not saving" banner
+   (js/shell/storage-status.js). Save-failure messages use the standard
+   notification styles in notifications.css.
+
+   Placed at the bottom centre rather than as a full-width bar under the top
+   bar: a bar there would sit on top of every maximised window's header.
+   =========================================================================== */
+
+.storage-banner {
+  position: fixed;
+  left: 50%;
+  bottom: var(--sp-5);
+  transform: translate(-50%, 16px);
+  z-index: var(--z-notification);
+
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  max-width: min(720px, calc(100vw - 2 * var(--sp-4)));
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
+  border-radius: 999px;
+  border: 1px solid rgba(248, 228, 92, 0.35);
+  background: rgba(28, 28, 28, 0.97);
+  color: #fff;
+  box-shadow: var(--shadow-4);
+  backdrop-filter: blur(12px);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+
+  opacity: 0;
+  transition:
+    opacity var(--dur-med) var(--ease-out),
+    transform var(--dur-med) var(--ease-out);
+}
+
+.storage-banner.is-shown {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.storage-banner__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f8e45c;
+  box-shadow: 0 0 0 3px rgba(248, 228, 92, 0.18);
+}
+
+.storage-banner__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.storage-banner__text b {
+  font-weight: var(--weight-bold);
+}
+
+.storage-banner__button {
+  flex: none;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: 999px;
+  background: var(--ubuntu-orange);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.storage-banner__button:hover {
+  background: #ed6a3d;
+}
+
+.storage-banner__button:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+@media (max-width: 560px) {
+  .storage-banner {
+    border-radius: var(--radius-xl);
+    flex-wrap: wrap;
+  }
+}

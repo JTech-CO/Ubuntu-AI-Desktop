@@ -114,24 +114,40 @@ Canonical event names (emit these, listen for these):
 | `ai:response` | `{ id, ms, chars }` |
 | `ai:error` | `{ id, message }` |
 | `session:poweroff` / `session:restart` / `session:lock` | `{}` |
+| `storage:error` | `{ target, backend, quota, name, message }` — once per failure streak |
+| `storage:recovered` | `{ target, backend }` |
+| `storage:degraded` | `{ backend, message }` — IndexedDB unusable, saving to localStorage |
+| `writer:change` | `{ role, reason }` — `role` ∈ `writer,reader`; see §6b |
 
 ---
 
 ## 3. `js/core/store.js` — persistence
 
-Namespaced `localStorage` wrapper. All keys are prefixed `uad:` internally.
+Namespaced `localStorage` wrapper for SMALL values — settings, the API key, the
+saved session. All keys are prefixed `uad:` internally. The filesystem does NOT
+live here any more; see §6a.
+
+Writes that fail (quota) or that happen in a read-only tab are kept in an
+in-memory overlay, which reads consult first, so a tab always reads back what it
+just wrote. A failed write emits `storage:error`; the next successful write of
+that key emits `storage:recovered`. `store.setReadOnly(true)` turns every write
+into an overlay-only write (used by §6b).
 
 ```js
 export const store = {
   get(key, fallback = null),   // JSON-parsed; returns fallback on miss/parse error
-  set(key, value),             // JSON-stringified; silently no-ops on quota error
+  set(key, value),             // JSON-stringified; -> false if the disk write failed
+  has(key),
+  setReadOnly(bool), isReadOnly(),
   remove(key),
   keys(),                      // -> string[] (un-prefixed)
   clear(),
 };
 ```
 
-Reserved keys: `fs`, `settings`, `apikey`, `history`, `wallpaper`, `trash`, `firstrun`.
+Reserved keys: `settings`, `apikey`, `history`, `wallpaper`, `trash`, `firstrun`.
+`fs` is legacy: it held the whole filesystem before §6a, and is now read once for
+migration (or written only when IndexedDB is unavailable).
 
 ---
 
@@ -238,10 +254,10 @@ export const fs = {
   emptyTrash(),
 
   // --- lifecycle ---
-  snapshot(),                      // -> plain JSON tree
-  restore(json),
-  reset(),                         // rebuild the pristine Ubuntu tree
-  persist(),                       // force immediate save (normally debounced 400ms)
+  snapshot(),                      // -> plain JSON tree, contents inline
+  restore(json, blobs?),           // blobs: Map<id, content> for { blob: id } refs
+  reset(),                         // rebuild the pristine tree -> Promise<boolean>
+  persist(),                       // save now (normally debounced 400ms) -> Promise<boolean>
 };
 ```
 
@@ -265,6 +281,51 @@ sense (`uptime`, `loadavg`, `meminfo` reflect `procs`/`metrics`).
 `/var/log`: `syslog auth.log dpkg.log`.
 
 ---
+
+## 6a. `js/core/fs-persist.js` — where the filesystem is saved
+
+IndexedDB database `ubuntu-ai-desktop`, two object stores:
+
+| store | key | value |
+| --- | --- | --- |
+| `meta` | `'tree'` | the tree, with every file ≥ 16 KB replaced by `{ blob: id }` |
+| `blobs` | blob id | that file's content string |
+
+- A save writes the tree plus only the blobs whose content changed, and deletes
+  unreferenced blobs, all in ONE readwrite transaction — atomic, so an
+  interrupted save leaves the previous consistent state.
+- Change detection needs no dirty flags: fs.js remembers the exact string it last
+  committed per blob id and compares by identity.
+- Saves are serialised and coalesced in fs.js; two never overlap.
+- `load()` prefers a legacy `uad:fs` localStorage snapshot when one exists,
+  because every successful IndexedDB save deletes it — so if it is there, it is
+  newer (pre-upgrade data, or a session that fell back to localStorage).
+- If IndexedDB cannot be opened (4 s timeout), saving falls back to inline
+  localStorage and `storage:degraded` is emitted.
+- Failures emit `storage:error` once per failure streak and `storage:recovered`
+  after the next success. js/shell/storage-status.js turns these into a sticky
+  notification.
+
+## 6b. `js/core/writer-lock.js` — one writer per browser
+
+Exactly one tab may save. It holds the Web Lock `ubuntu-ai-desktop:writer`; the
+browser releases it when the tab closes. Any other tab boots as a READER:
+`store` and `fs-persist` are read-only and a banner offers "Use here".
+
+```js
+export const writerLock = {
+  acquire(),        // at boot, before anything writes -> 'writer'|'reader'|'solo'
+  takeOver(),       // reader -> writer; reloads on success
+  setFlushHook(fn), // the writer runs fn() before handing over
+  getRole(), canWrite(),
+};
+```
+
+Handover: the reader posts `handover-request` on a BroadcastChannel; the writer
+flushes, becomes a reader and releases the lock; the reader acquires it and
+reloads. If the writer does not answer within 2.5 s, the lock is stolen.
+Browsers without Web Locks run as `solo` (a single writer, the old behaviour).
+Emits `writer:change` `{ role, reason }`.
 
 ## 7. `js/core/env.js` — shell environment
 
