@@ -26,9 +26,8 @@ const TABS = [
   { id: 'terminal', label: 'TERMINAL' },
 ];
 
-/** Languages Run can hand to the model as a simulated interpreter. */
+/** Languages Run can hand to the model as a simulated interpreter (Python runs for real). */
 const SIMULATED = {
-  python: { command: 'python3', label: 'Python 3.12' },
   javascript: { command: 'node', label: 'Node.js' },
   typescript: { command: 'npx tsx', label: 'TypeScript' },
   cpp: { command: 'g++ -std=c++20 -o /tmp/a.out … && /tmp/a.out', label: 'GNU C++' },
@@ -241,12 +240,26 @@ export function createPanel(options = {}) {
     termPrompt.textContent = promptText();
   }
 
+  /** The row of an unfinished line, which the next write continues — as a terminal does. */
+  let openRow = null;
+
   function termWrite(text, className) {
     if (text === undefined || text === null || text === '') return;
-    const node = h('div.panel-term__out');
-    if (className) node.classList.add(className);
-    node.appendChild(ansiToNodes(String(text)));
-    termLog.appendChild(node);
+    const parts = String(text).split('\n');
+    parts.forEach((part, i) => {
+      const last = i === parts.length - 1;
+      if (last && part === '') { openRow = null; return; }
+      let row = i === 0 && openRow && openRow.dataset.kind === (className || '') ? openRow : null;
+      if (!row) {
+        row = h('div.panel-term__out');
+        row.dataset.kind = className || '';
+        if (className) row.classList.add(className);
+        termLog.appendChild(row);
+      }
+      // an empty row still takes a line
+      row.appendChild(part === '' ? document.createTextNode('​') : ansiToNodes(part));
+      openRow = last ? row : null;
+    });
     termBody.scrollTop = termBody.scrollHeight;
   }
 
@@ -259,18 +272,22 @@ export function createPanel(options = {}) {
     },
     clear() {
       clear(termLog);
+      openRow = null;
     },
     ask(question, opts = {}) {
       return new Promise((resolve) => {
-        termPrompt.textContent = String(question === undefined ? '' : question);
+        const shown = String(question === undefined ? '' : question);
+        termPrompt.textContent = shown;
         termInput.type = opts.password ? 'password' : 'text';
         termInput.value = '';
         termInput.focus();
-        askResolver = (value) => {
+        askResolver = (value, cancelled = false) => {
           askResolver = null;
           termInput.type = 'text';
+          // the answered prompt stays in the log, as it would on a terminal
+          termWrite(`${shown}${cancelled ? '^C' : (opts.password ? '' : value)}\n`, 'is-echo');
           refreshPrompt();
-          resolve(value);
+          resolve(cancelled ? null : value);
         };
       });
     },
@@ -279,9 +296,9 @@ export function createPanel(options = {}) {
   async function runLine(line) {
     runController = new AbortController();
     try {
+      // execute() streams stdout and stderr to `term` itself; writing the
+      // returned copies as well printed everything twice.
       const result = await execute(line, { term, signal: runController.signal });
-      if (result && result.stdout) termWrite(result.stdout);
-      if (result && result.stderr) termWrite(result.stderr, 'is-stderr');
       return result && typeof result.code === 'number' ? result.code : 0;
     } catch (err) {
       termWrite(`${(err && err.message) || String(err)}\n`, 'is-stderr');
@@ -315,6 +332,11 @@ export function createPanel(options = {}) {
         const value = termInput.value;
         termInput.value = '';
         askResolver(value);
+      } else if (ev.key === 'c' && ev.ctrlKey) {
+        ev.preventDefault();
+        termInput.value = '';
+        askResolver('', true);
+        if (runController) runController.abort();
       }
       return;
     }
@@ -355,7 +377,7 @@ export function createPanel(options = {}) {
     }
     if (ev.key === 'l' && ev.ctrlKey) {
       ev.preventDefault();
-      clear(termLog);
+      term.clear();
     }
   });
 
@@ -539,14 +561,23 @@ export function createPanel(options = {}) {
         await runShellScript(doc);
         return;
       }
+      if (language === 'python' && doc.path) {
+        // Real CPython, in the integrated terminal so input() can be answered.
+        output(`Running ${doc.path} with python3 in the TERMINAL tab.`, 'note');
+        api.show('terminal');
+        if (running) return;
+        const quoted = `'${String(doc.path).replace(/'/g, "'\\''")}'`;
+        await submitLine(`python3 ${quoted}`);
+        return;
+      }
       if (SIMULATED[language]) {
         await runSimulated(doc, language);
         return;
       }
       rule('Nothing to run');
       output(`Code-OSS does not know how to run a ${languageLabel(language)} file.`, 'note');
-      output('Shell scripts run for real through the terminal engine; Python, JavaScript,', 'note');
-      output('TypeScript, C, C++ and Java can be executed as an AI simulation.', 'note');
+      output('Shell scripts and Python run for real; JavaScript, TypeScript, C, C++ and', 'note');
+      output('Java can be executed as an AI simulation.', 'note');
     },
 
     destroy() {

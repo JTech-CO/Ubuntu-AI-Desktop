@@ -73,6 +73,7 @@ export const PACKAGE_HINTS = Object.freeze({
   npm: 'npm',
   python: 'python3',
   pip: 'python3-pip',
+  pip3: 'python3-pip',
   gcc: 'gcc',
   'g++': 'g++',
   make: 'make',
@@ -126,6 +127,12 @@ export const PACKAGE_HINTS = Object.freeze({
  * @returns {string}
  */
 export function commandNotFound(name) {
+  // Ubuntu 24.04 ships python3 but no `python`; command-not-found says so this way.
+  if (name === 'python') {
+    return "Command 'python' not found, did you mean:\n"
+      + "  command 'python3' from deb python3\n"
+      + "  command 'python' from deb python-is-python3\n";
+  }
   const pkg = PACKAGE_HINTS[name];
   if (pkg) {
     return `Command '${name}' not found, but can be installed with:\nsudo apt install ${pkg}\n`;

@@ -686,6 +686,20 @@ export function createReadline(options) {
     if (mode === 'ask') {
       if (key === 'Enter') { ev.preventDefault(); finishAsk(); return; }
       if (ev.ctrlKey && (key === 'c' || key === 'C')) { ev.preventDefault(); interrupt(); return; }
+      // Ctrl+D on an empty line is end-of-file for callers that ask for it (python3's REPL, input()).
+      if (ev.ctrlKey && (key === 'd' || key === 'D')) {
+        ev.preventDefault();
+        if (buffer === '' && askState && askState.options.allowEof) {
+          write(`${askState.prompt}\n`);
+          const resolve = askState.resolve;
+          askState = null;
+          mode = askPrevMode;
+          if (mode === 'running') hideInput();
+          render();
+          resolve(undefined);
+        }
+        return;
+      }
       if (key === 'Backspace') {
         ev.preventDefault();
         if (cursor > 0) { buffer = buffer.slice(0, cursor - 1) + buffer.slice(cursor); cursor -= 1; render(); }

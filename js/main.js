@@ -408,6 +408,15 @@ step('register session persistence', () => {
 
 step('install storage status', () => storageStatus.install());
 
+// The service worker only carries python3's input() and time.sleep() (see
+// sw.js); it caches nothing, so the site works the same without it.
+step('register service worker', () => {
+  if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+  navigator.serviceWorker.register('./sw.js', { scope: './' }).catch((err) => {
+    console.warn('[boot] service worker not registered — python3 input() will need piped input:', err);
+  });
+});
+
 /* ===================================================================== *
  * 8. debug handle + splash
  * ===================================================================== */

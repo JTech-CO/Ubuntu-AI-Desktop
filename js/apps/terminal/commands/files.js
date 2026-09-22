@@ -2837,7 +2837,13 @@ DESCRIPTION
        -v, --verbose    output a diagnostic for every file processed`,
 
   async run(ctx) {
-    const p = optParse(ctx.argv);
+    // `chmod -x file` and `chmod -rw file`: like GNU chmod, a dash-led argument
+    // made only of permission letters is the MODE, not a cluster of options.
+    const argv = ctx.argv.slice();
+    const modeAt = argv.findIndex((a, i) => /^-[rwxXst]+$/.test(a) && !argv.slice(0, i).includes('--'));
+    const dashMode = modeAt >= 0 ? argv.splice(modeAt, 1)[0] : null;
+    const p = optParse(argv);
+    if (dashMode) p.operands.unshift(dashMode);
     const recursive = p.flags.has('R') || p.longs.recursive === true;
     const verbose = p.flags.has('v') || p.longs.verbose === true;
     const changesOnly = p.flags.has('c') || p.longs.changes === true;

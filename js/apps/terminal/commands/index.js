@@ -38,6 +38,7 @@ const MODULES = [
   './archive.js',
   './jq.js',
   './awk.js',
+  './python.js',
 ];
 
 /** @type {string[]} modules that failed to load, for diagnostics */

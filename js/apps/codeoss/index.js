@@ -595,10 +595,11 @@ function mount(root, ctx) {
     h('p.view__note', {
       text:
         'Shell scripts really execute, line by line, through the same engine the Terminal app ' +
-        'uses. Python, JavaScript, TypeScript, C, C++ and Java have no runtime here: Code-OSS ' +
-        'asks Gemini to predict the output and labels the result as AI-simulated. Without an ' +
-        'API key it tells you so rather than inventing output. There is no debugger, so no ' +
-        'breakpoints, stepping or variable inspection.',
+        'uses. Python really runs too: the file is saved and started with python3 (CPython via ' +
+        'Pyodide) in the TERMINAL tab, where input() works. JavaScript, TypeScript, C, C++ and ' +
+        'Java have no runtime here: Code-OSS asks Gemini to predict the output and labels the ' +
+        'result as AI-simulated. Without an API key it tells you so rather than inventing ' +
+        'output. There is no debugger, so no breakpoints, stepping or variable inspection.',
     }),
   );
 
@@ -703,6 +704,11 @@ function mount(root, ctx) {
       return;
     }
     doc.content = editor.getValue();
+    // Python runs for real, from the file on disk — save first, as VS Code's
+    // "Run Python File" does.
+    if (doc.language === 'python' && (doc.dirty || !doc.path)) {
+      if (!(await saveActive())) return;
+    }
     await panel.run({ path: doc.path, content: doc.content, language: doc.language });
   }
 

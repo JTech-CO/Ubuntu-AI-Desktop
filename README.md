@@ -5,7 +5,7 @@
 [![Live demo](https://img.shields.io/badge/demo-live-E95420?style=flat-square)](https://jtech-co.github.io/Ubuntu-AI-Desktop/)
 ![No build step](https://img.shields.io/badge/build-none-772953?style=flat-square)
 ![Vanilla ES modules](https://img.shields.io/badge/js-vanilla%20ES%20modules-2C001E?style=flat-square)
-![Commands](https://img.shields.io/badge/shell-213%20commands-26A269?style=flat-square)
+![Commands](https://img.shields.io/badge/shell-214%20commands-26A269?style=flat-square)
 
 [![Ubuntu AI Desktop](assets/og-image.png)](https://jtech-co.github.io/Ubuntu-AI-Desktop/)
 
@@ -98,6 +98,7 @@ Everything except the AI features works with no key at all.
 ```
 index.html              shell skeleton, stylesheet links, one module script
 serve.py                local dev server (no-cache, correct MIME types)
+sw.js                   service worker: only the python3 input()/sleep channel
 docs/ARCHITECTURE.md    the normative contract every module is built against
 css/base/               design tokens, reset, typography
 css/shell/              desktop, window chrome, top bar, dock, menus, dialogs
@@ -157,14 +158,43 @@ the line falls.
 expansion, pipes, redirection, globbing and subshells; GNU output formats and
 error strings; `isatty(1)` behaviour, so `ls | wc -l` counts files; the window
 manager's eight-way resize, edge snapping and tiling; the host's hardware as far
-as the browser will report it; and in Firefox's live mode, genuine network
-requests, genuine search results and genuine YouTube playback.
+as the browser will report it; `python3`, which is genuine CPython 3.12 (see
+below); and in Firefox's live mode, genuine network requests, genuine search
+results and genuine YouTube playback.
 
 **Simulated** — there is no kernel and no real process table (`ps`/`top` read a
 model); `apt` installs from a fake archive, and although it really writes a file
 into `/usr/bin`, that file is not executable code; the network commands
 (`ping`, `dig`, `traceroute`) invent plausible output; and Code-OSS's Run button
-asks Gemini to act as an interpreter rather than executing anything.
+asks Gemini to act as an interpreter for JavaScript, C, C++ and Java (shell
+scripts and Python run for real).
+
+### Python
+
+`python3` is real CPython 3.12.7, compiled to WebAssembly by
+[Pyodide](https://pyodide.org) 0.27.7 and run in a Web Worker so a busy program
+never freezes the page. The first run downloads it from `cdn.jsdelivr.net` (about
+6 MB, then cached by the browser) — besides the Gemini API, the only thing the
+terminal fetches from the network.
+
+- `python3` alone opens the interactive interpreter; `python3 file.py`,
+  `python3 -c`, `python3 -m json.tool`, piped scripts and `-i` all work, and
+  `./script.py` runs through its `#!/usr/bin/env python3` line.
+- Programs see the desktop's files: home, `/tmp` and the working directory are
+  mirrored in before a run, and whatever the program writes, renames or deletes
+  there is saved back. `/etc` is readable; changes to it are not kept.
+- `input()` reads the terminal. Python can only block for it through a
+  synchronous request, so `sw.js` — a service worker that caches nothing — holds
+  that request open until you press Enter; `time.sleep()` uses the same channel.
+  Piped input (`echo 42 | python3 script.py`) needs no service worker.
+- As on a fresh Ubuntu, only the standard library is installed; `python` (without
+  the 3) and `pip` answer with Ubuntu's own command-not-found text.
+- Ctrl+C stops the program by terminating the worker, so a `KeyboardInterrupt`
+  cannot be caught and the interactive interpreter's variables are lost. There
+  are no sockets, `subprocess` or `os.fork`.
+
+Code-OSS's Run button saves a `.py` file and starts it with `python3` in the
+integrated terminal, where `input()` works too.
 
 ### Hardware readings
 
@@ -248,6 +278,8 @@ diff nl less more paste column fold split join comm shuf`
 **Archives** `tar gzip gunzip zcat zip unzip` — GNU tar format, gzip with a real
 header and CRC, zip with deflate. bzip2, xz and zstd say they are not implemented.
 
+**Python** `python3` (`python3.12`) — real CPython, see [Python](#python) above.
+
 **JSON** `jq` (1.7.1) — like a fresh Ubuntu, it is not installed until you run
 `sudo apt install jq`; until then the shell answers `Command 'jq' not found`.
 
@@ -283,7 +315,7 @@ your files alone — use `clear` or `Ctrl+L` for that.)
 GitHub sends `X-Frame-Options`, so the real site cannot be embedded, and the page
 says so. Enter then takes the browser tab to the live site; Escape cancels.
 
-That is 189 external commands plus 24 builtins — 213 in all, or 227 names counting
+That is 190 external commands plus 24 builtins — 214 in all, or 229 names counting
 aliases. Run `help` for the live list, or
 `man <command>` for a full page.
 
@@ -295,19 +327,24 @@ records. It needs `sudo`, and without it prints the genuine dpkg lock error.
 
 These are deliberate, and the commands tell you rather than pretending:
 
-- **Nothing reaches the network** except the Gemini API. `curl`, `wget`, `ping`
-  and `dig` return generated or canned responses; Firefox's pages are written by
-  Gemini and labelled as such on every page.
+- **Nothing reaches the network** except the Gemini API and, the first time
+  `python3` runs, the Pyodide runtime from `cdn.jsdelivr.net`. `curl`, `wget`,
+  `ping` and `dig` return generated or canned responses; in AI mode Firefox's
+  pages are written by Gemini and labelled as such on every page.
 - **`bc`** uses JavaScript doubles, so `scale` is honoured to about 15 decimal
   places rather than arbitrary precision, and `define`/`if`/`while`/`for` are not
   implemented (they return the real `(standard_in): syntax error`).
 - **`yes`** is rate-limited and capped at a million lines so a piped `yes` cannot
   freeze the tab.
 - **`xxd -r`** (reverse a hex dump) is not implemented.
-- **Code-OSS "Run"** does not execute Python or C++. Shell scripts really run
-  through the terminal engine; other languages are sent to Gemini, and the output
-  panel labels the result as AI-simulated. With no API key it says so instead of
+- **Code-OSS "Run"** does not execute JavaScript, C or C++. Shell scripts and
+  Python really run; other languages are sent to Gemini, and the output panel
+  labels the result as AI-simulated. With no API key it says so instead of
   inventing output.
+- **`./script.sh`** runs like `source`: this shell has no control-flow grammar
+  (`if`, `for`, `while` are skipped) and no subshell, so a script's variables stay
+  set afterwards. Scripts with another `#!` interpreter (`python3`, `awk -f`) run
+  through it.
 - **`ai … | grep`** — the progress spinner is buffered into the pipe along with
   the answer, because the shell gives commands a single output channel.
 - **`awk`** measures strings in characters, as gawk does in a UTF-8 locale; the

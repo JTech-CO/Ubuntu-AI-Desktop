@@ -1482,6 +1482,76 @@ function makeCommandCtx(sh, name, argv, argText, stdin, cmdTerm, stdoutIsTTY, st
   };
 }
 
+/**
+ * Run a command given by path — `./hello.py`, `/usr/bin/ls`, `~/bin/tool`.
+ *
+ * An installed program in a bin directory runs as that command. A script
+ * runs through the interpreter its `#!` line names (`#!/usr/bin/env python3`
+ * reaches python3 with the script path, as the kernel would pass it); shell
+ * scripts and files without a `#!` line run like `source`, because this
+ * shell has no subshell or control-flow grammar.
+ */
+async function runByPath(sh, session, name, args, argText, stdin, stdinBinary, cmdTerm, direct) {
+  const target = path.resolve(session.cwd, path.expandTilde(name, session.home));
+  let st;
+  try {
+    st = fs.stat(target);
+  } catch {
+    return { stderr: `bash: ${name}: No such file or directory\n`, code: 127 };
+  }
+  if (st.isDir) return { stderr: `bash: ${name}: Is a directory\n`, code: 126 };
+  if (!(Number(st.mode) & 0o111)) return { stderr: `bash: ${name}: Permission denied\n`, code: 126 };
+
+  const base = path.basename(target);
+  if (/^\/(usr\/)?(local\/)?s?bin\//.test(target)) {
+    const command = getCommand(base);
+    if (command) return command.run(makeCommandCtx(sh, base, args, argText, stdin, cmdTerm, direct, stdinBinary));
+    if (BUILTINS[base]) {
+      return BUILTINS[base].run({ argv: args, raw: argText, stdin, sh, session, term: cmdTerm, signal: sh.signal, write: (t) => cmdTerm.write(t) });
+    }
+    if ((st.size || 0) === 0) {
+      return { stderr: `bash: ${name}: this program is not implemented in this emulator\n`, code: 126 };
+    }
+  }
+
+  if (st.binary) return { stderr: `bash: ${name}: cannot execute binary file: Exec format error\n`, code: 126 };
+  let text;
+  try {
+    text = fs.readFile(target);
+  } catch (err) {
+    return { stderr: `bash: ${name}: ${fsPhrase(err)}\n`, code: 126 };
+  }
+
+  let interp = '';
+  let extra = [];
+  let viaEnv = false;
+  if (text.startsWith('#!')) {
+    const nl = text.indexOf('\n');
+    const parts = text.slice(2, nl < 0 ? text.length : nl).trim().split(/\s+/).filter(Boolean);
+    interp = parts[0] || '';
+    extra = parts.slice(1);
+    if (path.basename(interp) === 'env') {
+      viaEnv = true;
+      while (extra[0] && extra[0].startsWith('-')) extra.shift();
+      interp = extra.shift() || '';
+    }
+  }
+  const iname = path.basename(interp);
+  if (!interp || iname === 'sh' || iname === 'bash' || iname === 'dash') {
+    return BUILTINS.source.run({
+      argv: [target, ...args], raw: argText, stdin, sh, session, term: cmdTerm, signal: sh.signal,
+      write: (t) => cmdTerm.write(t),
+    });
+  }
+  const command = getCommand(iname);
+  if (!command) {
+    if (viaEnv) return { stderr: `/usr/bin/env: '${iname}': No such file or directory\n`, code: 127 };
+    return { stderr: `bash: ${name}: ${interp}: bad interpreter: No such file or directory\n`, code: 126 };
+  }
+  const argv = [...extra, name, ...args];
+  return command.run(makeCommandCtx(sh, iname, argv, argv.join(' '), stdin, cmdTerm, direct, stdinBinary));
+}
+
 async function runSimple(cmd, sh, io) {
   const session = sh.session;
 
@@ -1617,7 +1687,9 @@ async function runSimple(cmd, sh, io) {
       res = { code: 130 };
     } else {
       const builtin = BUILTINS[name];
-      if (builtin) {
+      if (name.includes('/')) {
+        res = await runByPath(sh, session, name, args, argText, stdin, stdinBinary, cmdTerm, direct);
+      } else if (builtin) {
         res = await builtin.run({
           argv: args,
           raw: argText,

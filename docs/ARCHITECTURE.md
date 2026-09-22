@@ -622,6 +622,28 @@ Long-running interpreters (`awk`, `jq`) must yield to the event loop every few t
 steps so output streams and Ctrl+C can abort them; `awk` runs as a generator whose driver
 awaits the Promises it yields for `system()`, `cmd | getline` and output pipes.
 
+### Running by path
+
+A command word containing `/` is resolved against the cwd: missing → `bash: X: No such file
+or directory` (127), a directory or a file without an `x` bit → 126. Programs in a bin
+directory run as the registered command of that name; scripts follow their `#!` line
+(`#!/usr/bin/env python3` → `python3 X args…`); shell scripts and files with no `#!` run
+through the `source` builtin.
+
+### `python3` — `commands/python.js`, `python-worker.js`, `/sw.js`
+
+CPython 3.12.7 from Pyodide 0.27.7 (jsDelivr) runs in a module Web Worker, one shared
+instance plus a private one when it is busy. Per run the page sends a snapshot of home,
+`/tmp`, `/etc` (read-only) and the cwd; the worker writes it into Pyodide's MEMFS and
+returns `{changed, deleted, dirs}` for the writable roots, which the page applies with
+`fs.writeBytes`/`fs.rm`. Ctrl+C terminates the worker.
+
+`input()` and `time.sleep()` block with a synchronous XHR to `…/__uad_py__/stdin/<key>` or
+`…/sleep/<ms>`, which the service worker holds open until the page posts
+`{type:'uad-py-stdin', key, value:{line}|{eof:true}}` (or the time passes). The service
+worker answers only those URLs and caches nothing; without it, piped stdin still works
+and `input()` explains what is missing.
+
 ### Required command coverage
 
 - **files**: `ls cd pwd mkdir rmdir rm cp mv touch ln cat tac head tail wc find tree du df stat file chmod chown realpath basename dirname`
